@@ -1,0 +1,3237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Sheet 5e</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    
+    <style>
+        :root {
+            /* Traditional RPG Theme - Parchment & Ink */
+            --bg-color: #e8dcca;       
+            --panel-bg: #fdfbf7;       
+            --sidebar-bg: #dbcfb8;     
+            --border: #5c4033;         
+            --text-main: #1a1a1a;      
+            --text-muted: #5a4a3a;     
+            
+            /* Attribute Colors */
+            --str: #8b0000; --dex: #2e8b57; --con: #d2691e;   
+            --int: #00008b; --wis: #b8860b; --cha: #800080;   
+
+            --accent: #8b0000; 
+            
+            --font-main: 'Book Antiqua', Palatino, 'Palatino Linotype', 'Palatino LT STD', Georgia, serif;
+            --font-mono: 'Courier New', Courier, monospace;
+            --font-header: 'MedievalSharp', cursive;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZThkY2NhIi8+CjxwYXRoIGQ9Ik0wIDBMNCA0Wk00IDBMMCA0WiIgc3Ryb2tlPSIjZDljMmIwIiBzdHJva2Utd2lkdGg9IjEiLz4KPC9zdmc+');
+        }
+
+        /* --- SIDEBAR --- */
+        aside {
+            width: 320px;
+            background-color: var(--sidebar-bg);
+            border-right: 2px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 15px;
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: width 0.3s ease, padding 0.3s ease;
+            position: relative;
+        }
+
+        aside.collapsed { width: 60px; padding: 20px 5px; }
+        aside.collapsed .input-group, 
+        aside.collapsed .avatar-container,
+        aside.collapsed .unit-toggle-label,
+        aside.collapsed .bottom-actions,
+        aside.collapsed .inspiration-toggle { display: none; }
+        aside.collapsed .nav-btn span { display: none; }
+        aside.collapsed .nav-btn { justify-content: center; padding: 15px 0; }
+        aside.collapsed .nav-btn i { font-size: 1.5rem; margin: 0; }
+
+        .sidebar-toggle {
+            position: absolute; top: 10px; right: 10px;
+            background: transparent; border: none; color: var(--text-muted);
+            cursor: pointer; font-size: 1.2rem;
+        }
+        aside.collapsed .sidebar-toggle { right: 50%; transform: translateX(50%); top: 10px; }
+
+        .avatar-container {
+            width: 120px; height: 120px;
+            margin: 0 auto 10px auto;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .avatar-img {
+            width: 100%; height: 100%;
+            border-radius: 50%;
+            border: 3px solid var(--border);
+            object-fit: cover;
+            background: rgba(0,0,0,0.05);
+            display: block;
+        }
+        
+        .avatar-overlay {
+            position: absolute; top:0; left:0; right:0; bottom:0;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: 0.2s; color: #fff;
+        }
+        .avatar-container:hover .avatar-overlay { opacity: 1; }
+
+        .input-group { margin-bottom: 10px; }
+        .input-label { 
+            font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); 
+            letter-spacing: 1px; margin-bottom: 2px; display: block; font-weight: bold;
+        }
+        
+        .sheet-input, .sheet-select {
+            width: 100%; background: transparent; border: none; 
+            border-bottom: 1px solid var(--border); color: var(--text-main); 
+            padding: 5px 0; border-radius: 0; font-family: var(--font-main);
+            font-size: 1rem; transition: border-color 0.2s;
+        }
+        .sheet-input:focus, .sheet-select:focus { 
+            outline: none; 
+            border-bottom: 2px solid var(--accent); 
+            background: rgba(255,255,255,0.2); 
+        }
+
+        /* Multiclass Styles */
+        .class-row { 
+            display: grid; 
+            grid-template-columns: 2fr 1fr 20px; 
+            gap: 5px; 
+            margin-bottom: 5px; 
+            align-items: center; 
+        }
+        .class-row .sheet-select, .class-row .sheet-input { font-size: 0.9rem; padding: 2px; }
+
+        .nav-menu { display: flex; flex-direction: column; gap: 5px; margin-bottom: 20px; margin-top: auto; }
+        .nav-btn {
+            background: transparent; border: 1px solid transparent; color: var(--text-muted); 
+            padding: 10px; text-align: left; cursor: pointer;
+            border-radius: 4px; font-weight: bold; display: flex; align-items: center; gap: 10px; transition: 0.2s;
+            font-family: var(--font-main); text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .nav-btn:hover { background: rgba(92, 64, 51, 0.1); color: var(--border); border-color: rgba(92, 64, 51, 0.2); }
+        .nav-btn.active { 
+            background: var(--panel-bg); 
+            color: var(--accent); 
+            border: 1px solid var(--border); 
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.1); 
+        }
+
+        .bottom-actions { padding-top: 15px; border-top: 2px solid var(--border); }
+        .action-row { display: flex; gap: 10px; margin-bottom: 10px; }
+
+        .xp-bar-container { 
+            height: 6px; 
+            background: rgba(0,0,0,0.1); 
+            border-radius: 3px; 
+            overflow: hidden; 
+            margin-top: 5px; 
+            border: 1px solid var(--border); 
+        }
+        .xp-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s; }
+        .xp-text { font-size: 0.75rem; color: var(--text-muted); text-align: right; margin-top: 2px; }
+
+        .inspiration-toggle {
+            display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;
+            padding: 8px; border: 1px solid var(--border); border-radius: 4px; margin-top: 10px;
+            background: rgba(255,255,255,0.2);
+        }
+        .inspiration-toggle.active { 
+            background: #fffbe6; 
+            border-color: #d4af37; 
+            color: #d4af37; 
+            font-weight: bold; 
+            box-shadow: 0 0 5px rgba(212,175,55,0.3); 
+        }
+        .inspiration-icon { font-size: 1.2rem; }
+
+        /* --- MAIN CONTENT --- */
+        main { flex: 1; padding: 40px; overflow-y: auto; position: relative; }
+
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- ABILITIES --- */
+        .abilities-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin-bottom: 30px; }
+        .ability-card {
+            background: var(--panel-bg); border: 2px solid var(--border); border-radius: 8px; padding: 10px 5px; text-align: center;
+            position: relative; box-shadow: 3px 3px 0 rgba(0,0,0,0.1);
+        }
+        .ab-label { 
+            font-weight: bold; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 5px; 
+            display: block; text-transform: uppercase; letter-spacing: 1px; 
+        }
+        .ab-score-wrapper { display: flex; justify-content: center; align-items: center; gap: 2px; }
+        .ab-score { 
+            width: 48px; height: 30px; font-size: 1.4rem; text-align: center; background: transparent; 
+            border: none; color: var(--text-main); font-weight: bold; font-family: var(--font-main); 
+        }
+        .ab-race-mod { font-size: 0.8rem; color: var(--accent); font-weight: bold; }
+        .ab-mod { 
+            background: transparent; border-radius: 50%; width: 35px; height: 30px; padding-top: 5px;
+            font-size: 1.1rem; font-family: var(--font-main); display: inline-block; margin-top: 5px; 
+            border: 2px solid var(--color); font-weight: bold; color: var(--color);
+        }
+
+        /* --- LIST PANELS --- */
+        .grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .list-panel { 
+            background: var(--panel-bg); border: 2px solid var(--border); border-radius: 4px; padding: 20px; 
+            display: flex; flex-direction: column; box-shadow: 3px 3px 0 rgba(0,0,0,0.1);
+        }
+        .panel-title { 
+            font-size: 1.2rem; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; 
+            color: var(--text-main); display: flex; justify-content: space-between; align-items: center;
+            font-weight: bold; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .skill-row, .tool-row { 
+            display: flex; align-items: center; padding: 4px 0; 
+            border-bottom: 1px dotted var(--text-muted); font-size: 0.95rem; 
+        }
+        .skill-prof { 
+            width: 14px; height: 14px; border: 1px solid var(--border); background: transparent; 
+            border-radius: 50%; cursor: pointer; margin-right: 10px; display: flex; 
+            align-items: center; justify-content: center; 
+            color: transparent; font-size: 10px; flex-shrink: 0;
+        }
+        .skill-prof.active { background: var(--text-main); color: var(--text-main); }
+        .skill-prof.expertise { background: var(--text-main); border: 2px solid var(--accent); color: var(--text-main); } 
+        .skill-mod { 
+            font-family: var(--font-mono); color: var(--text-main); width: 30px; 
+            text-align: center; margin-right: 10px; font-weight: bold; 
+        }
+        .skill-name { flex: 1; color: var(--text-main); font-weight: 500; }
+        .skill-bonus-input { 
+            width: 40px; border: none; border-bottom: 1px dotted var(--text-muted); 
+            background: transparent; color: var(--accent); font-family: var(--font-mono); 
+            font-size: 0.8rem; text-align: center;
+        }
+        .skill-bonus-input:focus { outline: none; border-bottom: 1px solid var(--accent); }
+
+        /* --- STAT BLOCK & IMAGES STYLES --- */
+        .stat-block-wrapper {
+            display: inline-block;
+            vertical-align: top;
+            margin: 10px;
+            border: 2px solid var(--border);
+            position: relative;
+            resize: both;
+            overflow: hidden; /* Required for resize to work */
+            min-width: 150px;
+            min-height: 100px;
+            background: #fff;
+            box-shadow: 3px 3px 5px rgba(0,0,0,0.1);
+        }
+
+        .stat-block-img {
+            width: 100%;
+            height: 100%;
+            object-fit: fill; /* Stretches image to fit container */
+            display: block;
+            pointer-events: none; /* Allows click-through for resizing */
+        }
+
+        .stat-block-del {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--accent);
+            color: #fff;
+            cursor: pointer;
+            width: 20px; 
+            height: 20px;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            font-size: 0.8rem;
+            z-index: 10;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .stat-block-wrapper:hover .stat-block-del { opacity: 1; }
+
+        
+        /* New Disadvantage Toggle Style */
+        .skill-dis {
+            width: 16px; height: 16px; border: 1px solid var(--text-muted); border-radius: 3px; 
+            margin-left: 5px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 10px; color: transparent; font-weight: bold;
+        }
+        .skill-dis.active { background: #8b0000; border-color: #8b0000; color: #fff; }
+
+        /* --- COMBAT --- */
+        .combat-top { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .combat-stat { 
+            background: var(--panel-bg); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; 
+            box-shadow: inset 0 0 10px rgba(92, 64, 51, 0.1);
+        }
+        .combat-stat input { 
+            width: 100%; text-align: center; background: transparent; border: none; 
+            color: var(--text-main); font-size: 2rem; font-weight: bold; font-family: var(--font-main); 
+        }
+        .hp-controls { display: flex; gap: 5px; justify-content: center; margin-top: 5px; }
+        .hp-btn { 
+            background: transparent; border: 1px solid var(--border); color: var(--text-main); 
+            width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: bold; transition: 0.2s;
+        }
+        .hp-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+        .attacks-list { margin-top: 20px; }
+        /* Adjusted grid for Fire button */
+        .attack-row { 
+            display: grid; grid-template-columns: 2fr 1.5fr 0.5fr 2.5fr 0.5fr 30px 30px; gap: 5px; 
+            background: transparent; padding: 5px 0; margin-bottom: 5px; 
+            border-bottom: 1px solid var(--border); align-items: center; 
+        }
+        .btn-add, .btn-io { 
+            width: 100%; padding: 8px; background: transparent; color: var(--border); 
+            border: 1px dashed var(--border); border-radius: 4px; cursor: pointer; 
+            font-weight: bold; text-transform: uppercase; font-family: var(--font-main);
+        }
+        .btn-add:hover, .btn-io:hover { background: rgba(92, 64, 51, 0.1); }
+        .btn-del { color: var(--accent); cursor: pointer; text-align: center; opacity: 0.6; transition: 0.2s; }
+        .btn-del:hover { opacity: 1; }
+        .btn-edit { color: var(--text-main); cursor: pointer; text-align: center; opacity: 0.6; transition: 0.2s; }
+        .btn-edit:hover { opacity: 1; }
+        
+        .btn-fire {
+            background: transparent; border: 1px solid var(--text-muted); color: var(--text-muted);
+            border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex;
+            align-items: center; justify-content: center; visibility: hidden;
+        }
+        .btn-fire.visible { visibility: visible; }
+        .btn-fire:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* --- SPELLS --- */
+        .spell-header { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .slot-tracker { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .slot-group { 
+            background: transparent; padding: 10px; border-radius: 4px; 
+            border: 1px solid var(--border); flex: 1; min-width: 120px; 
+        }
+        .pips { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+        .pip { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--text-main); cursor: pointer; }
+        .pip.used { background: var(--text-main); }
+
+        .spell-card { 
+            border: 1px solid var(--border); border-radius: 4px; padding: 10px; margin-bottom: 8px; 
+            background: rgba(255,255,255,0.4); cursor: pointer; position: relative;
+        }
+        .spell-card:hover { background: rgba(255,255,255,0.7); }
+        .spell-top { display: flex; justify-content: space-between; align-items: center; }
+        .spell-meta { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
+        .spell-details { 
+            display: none; margin-top: 10px; padding-top: 10px; 
+            border-top: 1px dotted var(--text-muted); font-size: 0.9rem; line-height: 1.4; 
+        }
+        .spell-details.open { display: block; }
+        .cast-btn { 
+            background: var(--text-main); color: #fff; border: none; padding: 3px 8px; 
+            border-radius: 3px; font-size: 0.75rem; cursor: pointer; 
+        }
+        .cast-btn:hover { background: var(--accent); }
+
+        /* --- INVENTORY (UPDATED) --- */
+        .inv-header { 
+            display: grid; grid-template-columns: 3fr 1fr 1fr 30px 30px; gap: 10px; padding: 5px 10px; 
+            border-bottom: 2px solid var(--border); font-size: 0.8rem; font-weight: bold; 
+        }
+        /* Removed old .inv-row grid definition in favor of new structure */
+        .inv-cat-header { 
+            font-size: 0.8rem; font-weight: bold; text-transform: uppercase; color: var(--accent); 
+            margin-top: 10px; border-bottom: 1px solid rgba(92,64,51,0.3); padding: 5px; 
+        }
+        .encumbrance-bar { 
+            height: 8px; background: rgba(0,0,0,0.1); border-radius: 4px; overflow: hidden; 
+            margin: 10px 0; border: 1px solid var(--border); 
+        }
+        .encumbrance-fill { height: 100%; background: var(--border); width: 0%; transition: width 0.3s; }
+        .enc-text { font-size: 0.8rem; color: var(--text-main); text-align: right; font-weight: bold; }
+        
+        /* New Inventory Styles */
+        .inv-entry { border-bottom: 1px dotted rgba(92, 64, 51, 0.3); }
+        .inv-row { 
+            display: grid; grid-template-columns: 3fr 1fr 1fr 30px 30px; gap: 10px; 
+            padding: 8px 10px; align-items: center; cursor: pointer;
+        }
+        .inv-row:hover { background: rgba(92, 64, 51, 0.05); }
+        .inv-top { font-size: 0.95rem; color: var(--text-main); display: flex; align-items: center; gap: 5px; }
+        .inv-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+        .inv-stat { text-align: center; font-family: var(--font-mono); font-size: 0.9rem; }
+        .inv-note { 
+            font-size: 0.85rem; padding: 5px 10px 10px 10px; color: var(--text-muted); font-style: italic; 
+            background: rgba(0,0,0,0.02); margin-top: -2px;
+        }
+        
+        /* Quantity Controls */
+        .qty-box { display: flex; align-items: center; justify-content: center; gap: 3px; }
+        .qty-btn-mini {
+            width: 18px; height: 18px; border: 1px solid var(--border); background: rgba(255,255,255,0.5);
+            border-radius: 3px; font-size: 10px; cursor: pointer; display: flex; 
+            align-items: center; justify-content: center;
+            color: var(--text-main); padding: 0;
+        }
+        .qty-btn-mini:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+        /* --- JOURNAL STYLES --- */
+        .journal-entry { margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px dashed var(--border); }
+        .journal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .journal-title-input { 
+            font-family: var(--font-header); font-size: 1.5rem; color: var(--accent); 
+            background: transparent; border: none; border-bottom: 1px solid transparent; width: 100%; 
+            font-weight: bold;
+        }
+        .journal-title-input:focus { outline: none; border-bottom: 1px solid var(--accent); }
+        .journal-body { 
+            width: 100%; background: transparent; border: none; font-family: var(--font-main); 
+            font-size: 1rem; resize: vertical; min-height: 100px; line-height: 1.5; 
+        }
+        .journal-body:focus { outline: none; background: rgba(0,0,0,0.02); }
+
+        /* --- MODAL --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(92, 64, 51, 0.4); display: none; justify-content: center; align-items: center;
+            z-index: 100; backdrop-filter: blur(2px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--panel-bg); border: 2px solid var(--border);
+            width: 500px; border-radius: 2px; box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+            padding: 20px;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmRmYmY3Ii8+CjxwYXRoIGQ9Ik0wIDBMNCA0Wk00IDBMMCA0WiIgc3Ryb2tlPSIjZjBmMGZjIiBzdHJva2Utd2lkdGg9IjEiLz4KPC9zdmc+');
+        }
+
+        /* --- FEATS & TRAITS --- */
+        .feat-item { background: transparent; padding: 10px; margin-bottom: 10px; border-bottom: 1px double var(--border); }
+        .feat-header { 
+            display: flex; justify-content: space-between; font-weight: bold; color: var(--accent); 
+            margin-bottom: 5px; font-family: var(--font-main); font-size: 1.1rem; 
+        }
+        .feat-desc { font-size: 0.95rem; color: var(--text-main); font-family: var(--font-main); }
+        .feat-tag { 
+            font-size: 0.7rem; padding: 2px 5px; border: 1px solid var(--text-muted); 
+            border-radius: 3px; color: var(--text-muted); text-transform: uppercase; margin-right: 5px;
+        }
+
+        /* --- UTILS --- */
+        .hidden { display: none; }
+        .prof-badge { 
+            background: transparent; padding: 0; font-size: 1.5rem; color: var(--text-main); 
+            border: 2px solid var(--text-main); border-radius: 50%; width: 40px; height: 40px; 
+            display: flex; align-items: center; justify-content: center; margin: 0 auto; 
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        
+        .unit-toggle-label { 
+            display: flex; align-items: center; cursor: pointer; font-size: 0.8rem; 
+            color: var(--text-muted); gap: 5px; justify-content: center; margin-top: 10px; 
+        }
+        
+        .prof-tag { 
+            font-size: 0.65rem; background: var(--accent); color: #fff; padding: 2px 4px; 
+            border-radius: 2px; margin-left: 5px; font-weight: normal; vertical-align: middle; 
+        }
+    </style>
+</head>
+
+<body>
+
+    <aside id="sidebar">
+        <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="ph ph-arrows-left-right"></i></button>
+        <div class="avatar-container" onclick="document.getElementById('avatarInput').click()">
+            <img id="avatarImg" class="avatar-img" 
+                src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNWM0MDMzIiBzdHJva2Utd2lkdGg9IjEiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8+PHBhdGggZD0iTTEyIDhhNCA0IDAgMSAwIDAgOCA0IDQgMCAwIDAgMCAwLTh6Ii8+PHBhdGggZD0iTTE2IDE2YzAgMS41LTEuNSAzLTMgM3MtMy0xLjUtMy0zIi8+PC9zdmc+">
+            <div class="avatar-overlay"><i class="ph ph-camera"></i></div>
+            <input type="file" id="avatarInput" accept="image/*" class="hidden" onchange="loadAvatar(this)">
+        </div>
+        
+        <div class="input-group">
+            <label class="input-label">Character Name</label>
+            <input type="text" class="sheet-input" id="charName" oninput="saveData()" style="font-size:1.2rem; font-weight:bold;">
+        </div>
+
+        <div class="input-group">
+            <div style="display:flex; justify-content:space-between;">
+                <label class="input-label">Classes</label>
+                <label class="input-label">Total Lvl: <span id="totalLevelDisplay" style="color:var(--accent)">1</span></label>
+            </div>
+            
+            <div id="classesContainer">
+                </div>
+
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <button class="btn-add" style="flex:1" onclick="addClassRow()">+ Class</button>
+                <button onclick="openClassModal()" 
+                        style="background:transparent; border:1px solid var(--border); color:var(--text-main); width:30px; cursor:pointer;" 
+                        title="Add Custom Class Config">+</button>
+            </div>
+            <input type="hidden" id="charLevel" value="1">
+        </div>
+
+        <div class="input-group">
+            <label class="input-label">Subclass</label>
+            <input type="text" class="sheet-input" id="charSubclass" oninput="saveData()">
+        </div>
+
+        <div class="input-group">
+            <label class="input-label">Race</label>
+            <div style="display:flex; gap:5px;">
+                <select class="sheet-select" id="charRace" onchange="updateRaceStats()" style="flex:1;">
+                    <option value="">- Select -</option>
+                </select>
+                <button onclick="openRaceModal()" 
+                        style="background:transparent; border:1px solid var(--border); color:var(--text-main); width:30px; cursor:pointer;" 
+                        title="Add Custom Race">+</button>
+            </div>
+        </div>
+        
+        <div class="input-group">
+            <label class="input-label">Background</label>
+            <input type="text" class="sheet-input" id="charBackground" oninput="saveData()">
+        </div>
+
+        <div class="inspiration-toggle" id="inspirationToggle" onclick="toggleInspiration()">
+            <i class="ph ph-star inspiration-icon"></i> Inspiration
+        </div>
+
+        <div class="input-group" style="margin-top:15px;">
+            <label class="input-label">Experience Points</label>
+            <input type="number" id="charXP" class="sheet-input" value="0" oninput="updateXP()">
+            <div class="xp-bar-container"><div id="xpBar" class="xp-bar-fill"></div></div>
+            <div class="xp-text" id="xpText">0 / 300 (Lvl 1)</div>
+        </div>
+
+        <div class="input-group" style="text-align:center; margin-top:10px;">
+            <label class="input-label">Proficiency</label>
+            <div id="dispProf" class="prof-badge">+2</div>
+        </div>
+        <div class="input-group" style="text-align:center;">
+            <label class="input-label">Passive Perception</label>
+            <div id="dispPassivePerc" style="font-size:1.2rem; font-weight:bold;">10</div>
+        </div>
+
+        <div class="nav-menu">
+            <button class="nav-btn active" onclick="switchTab('stats')">
+                <i class="ph ph-chart-bar"></i> <span>Core Stats</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('combat')">
+                <i class="ph ph-sword"></i> <span>Combat</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('class')">
+                <i class="ph ph-crown"></i> <span>Feats</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('spells')">
+                <i class="ph ph-magic-wand"></i> <span>Spellbook</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('gear')">
+                <i class="ph ph-backpack"></i> <span>Gear</span>
+            </button>
+            <button class="nav-btn" onclick="switchTab('char')">
+                <i class="ph ph-user"></i> <span>Character</span>
+            </button>
+        </div>
+
+        <label class="unit-toggle-label">
+            <input type="checkbox" id="unitToggle" onchange="toggleUnits()"> Use Metric (m/kg)
+        </label>
+
+        <div class="bottom-actions">
+            <div class="action-row">
+                <button class="btn-io" onclick="exportJSON()">Export JSON</button>
+                <button class="btn-io" onclick="document.getElementById('importFile').click()">Import JSON</button>
+                <input type="file" id="importFile" class="hidden" accept=".json" onchange="importJSON(this)">
+            </div>
+            <div class="action-row">
+                <button class="btn-io" style="width:100%" onclick="document.getElementById('pdfTemplateInput').click()">Export to PDF</button>
+                <input type="file" id="pdfTemplateInput" class="hidden" accept=".pdf" onchange="fillPDF(this)">
+            </div>
+            <div class="action-row">
+                <button onclick="saveData()" 
+                        style="flex:1; background:var(--text-main); color:#fff; border:none; padding:8px; border-radius:4px; cursor:pointer; font-family:var(--font-main);">
+                    Save
+                </button>
+                <button onclick="showConfirm('Delete all data?', resetData)" 
+                        style="flex:1; background:transparent; color:var(--accent); border:1px solid var(--accent); padding:8px; border-radius:4px; cursor:pointer; font-family:var(--font-main);">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <main>
+        
+        <div id="tab-stats" class="tab-content active">
+            <div class="abilities-grid">
+                <div class="ability-card" style="--color: var(--str)">
+                    <span class="ab-label">STRENGTH</span>
+                    <div class="ab-score-wrapper">
+                        <input type="number" id="attrStr" class="ab-score" value="10" oninput="updateSheet()">
+                        <span class="ab-race-mod" id="raceModStr"></span>
+                    </div>
+                    <div class="ab-mod" id="modStr">+0</div>
+                </div>
+                <div class="ability-card" style="--color: var(--dex)">
+                    <span class="ab-label">DEXTERITY</span>
+                    <div class="ab-score-wrapper">
+                        <input type="number" id="attrDex" class="ab-score" value="10" oninput="updateSheet()">
+                        <span class="ab-race-mod" id="raceModDex"></span>
+                    </div>
+                    <div class="ab-mod" id="modDex">+0</div>
+                </div>
+                <div class="ability-card" style="--color: var(--con)">
+                    <span class="ab-label">CONSTITUTION</span>
+                    <div class="ab-score-wrapper">
+                        <input type="number" id="attrCon" class="ab-score" value="10" oninput="updateSheet()">
+                        <span class="ab-race-mod" id="raceModCon"></span>
+                    </div>
+                    <div class="ab-mod" id="modCon">+0</div>
+                </div>
+                <div class="ability-card" style="--color: var(--int)">
+                    <span class="ab-label">INTELLIGENCE</span>
+                    <div class="ab-score-wrapper">
+                        <input type="number" id="attrInt" class="ab-score" value="10" oninput="updateSheet()">
+                        <span class="ab-race-mod" id="raceModInt"></span>
+                    </div>
+                    <div class="ab-mod" id="modInt">+0</div>
+                </div>
+                <div class="ability-card" style="--color: var(--wis)">
+                    <span class="ab-label">WISDOM</span>
+                    <div class="ab-score-wrapper">
+                        <input type="number" id="attrWis" class="ab-score" value="10" oninput="updateSheet()">
+                        <span class="ab-race-mod" id="raceModWis"></span>
+                    </div>
+                    <div class="ab-mod" id="modWis">+0</div>
+                </div>
+                <div class="ability-card" style="--color: var(--cha)">
+                    <span class="ab-label">CHARISMA</span>
+                    <div class="ab-score-wrapper">
+                        <input type="number" id="attrCha" class="ab-score" value="10" oninput="updateSheet()">
+                        <span class="ab-race-mod" id="raceModCha"></span>
+                    </div>
+                    <div class="ab-mod" id="modCha">+0</div>
+                </div>
+            </div>
+
+            <div class="grid-2-col">
+                <div class="list-panel">
+                    <div class="panel-title"><span>Saving Throws</span> <i class="ph ph-shield"></i></div>
+                    <div id="savesList"></div>
+                </div>
+                <div class="list-panel">
+                    <div class="panel-title"><span>Skills</span> <i class="ph ph-graduation-cap"></i></div>
+                    <div id="skillsList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-combat" class="tab-content">
+            <div class="combat-top">
+                <div class="combat-stat">
+                    <label class="input-label">Armor Class</label>
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                        <input type="number" id="valAC" value="10" oninput="saveData()" style="font-size:1.8rem; width:100%;">
+                        <select id="equippedArmor" class="sheet-select" 
+                                style="font-size:0.7rem; padding:0; text-align:center; width:100%;" 
+                                onchange="updateAC()">
+                            <option value="">No Armor</option>
+                        </select>
+                        <div style="display:flex; gap:5px; width:100%;">
+                            <select id="acSecStat" class="sheet-select" 
+                                    style="font-size:0.65rem; padding:0; text-align:center; width:50%; border-bottom:1px dotted var(--text-muted);" 
+                                    onchange="updateAC()">
+                                <option value="">+Stat</option>
+                                <option value="Str">Str</option>
+                                <option value="Dex">Dex</option>
+                                <option value="Con">Con</option>
+                                <option value="Int">Int</option>
+                                <option value="Wis">Wis</option>
+                                <option value="Cha">Cha</option>
+                            </select>
+                            <input type="number" id="acMisc" placeholder="+Misc" value="0" class="sheet-input" 
+                                style="font-size:0.65rem; text-align:center; width:50%; border-bottom:1px dotted var(--text-muted);" 
+                                oninput="updateAC()">
+                        </div>
+                    </div>
+                </div>
+                <div class="combat-stat">
+                    <label class="input-label">Initiative</label>
+                    <div style="display:flex; align-items:center; justify-content:center; gap:5px;">
+                        <div style="display:flex; flex-direction:column; align-items:center; line-height:1;">
+                            <span id="dispInit" style="font-size:1.8rem; font-weight:bold; font-family:var(--font-main);">+0</span>
+                            <input type="number" id="valInitMisc" placeholder="Misc" value="0" oninput="updateSheet()" 
+                                style="width:40px; font-size:0.7rem; text-align:center; border:none; border-bottom:1px dotted var(--text-muted); background:transparent; color:var(--accent);">
+                        </div>
+                        <button onclick="rollInitiative()" 
+                                style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; margin-left:5px;" 
+                                title="Roll Initiative"><i class="ph ph-dice-five" style="font-size:1.2rem;"></i></button>
+                    </div>
+                </div>
+                <div class="combat-stat">
+                    <label class="input-label">Speed</label>
+                    <div style="text-align:center; font-size:1.4rem; font-weight:bold; font-family:var(--font-main);" id="dispSpeed">30 ft</div>
+                </div>
+                <div class="combat-stat hp-box">
+                    <label class="input-label">Hit Points (Cur/Max)</label>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <input type="number" id="hpCurr" value="10" oninput="saveData()"><span style="font-size:1.5rem;">/</span><input type="number" id="hpMax" value="10" oninput="saveData()">
+                    </div>
+                    <div class="hp-controls">
+                        <button class="hp-btn" onclick="modHP(-1)">-</button>
+                        <button class="hp-btn" onclick="modHP(1)">+</button>
+                        <button class="hp-btn" style="width:auto; padding:0 10px; font-size:0.7rem; border-radius:4px;" onclick="restHP()">Rest</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2-col">
+                <div class="list-panel">
+                    <div class="panel-title"><span>Attacks</span> <button onclick="addAttack()" style="background:none; border:none; color:var(--accent); cursor:pointer;">+</button></div>
+                    <div class="attacks-list" id="attacksContainer"></div>
+                </div>
+                <div class="list-panel">
+                    <div class="panel-title"><span>Health & Status</span></div>
+                    <div class="input-group"><label class="input-label">Hit Dice</label><input type="text" class="sheet-input" id="hitDice" placeholder="1d10" oninput="saveData()"></div>
+                    <div class="input-group">
+                        <label class="input-label">Death Saves</label>
+                        <div style="display:flex; justify-content:space-between; margin-top:5px; border-bottom:1px dotted var(--text-muted); padding-bottom:5px;">
+                            <span style="font-size:0.9rem; font-weight:bold;">Successes</span>
+                            <div class="pips" id="dsSuccessPips"><div class="pip" onclick="togglePip(this)"></div><div class="pip" onclick="togglePip(this)"></div><div class="pip" onclick="togglePip(this)"></div></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-top:5px;">
+                            <span style="font-size:0.9rem; font-weight:bold;">Failures</span>
+                            <div class="pips" id="dsFailPips"><div class="pip" onclick="togglePip(this)" style="border-color:var(--accent)"></div><div class="pip" onclick="togglePip(this)" style="border-color:var(--accent)"></div><div class="pip" onclick="togglePip(this)" style="border-color:var(--accent)"></div></div>
+                        </div>
+                    </div>
+                    <div class="input-group"><label class="input-label">Conditions / Notes</label><textarea id="combatNotes" class="sheet-input" rows="4" oninput="saveData()"></textarea></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-class" class="tab-content">
+            <div class="list-panel">
+                <div class="panel-title"><span>Feats & Traits</span><button class="btn-add" style="width:auto; padding:4px 10px; margin:0;" onclick="openFeatModal()">+ Feat</button></div>
+                <div id="classFeatsContainer"></div>
+            </div>
+        </div>
+
+        <div id="tab-spells" class="tab-content">
+            <div class="spell-header">
+                <div class="combat-stat">
+                    <label class="input-label">Ability</label>
+                    <select class="sheet-select" id="spellAbility" onchange="updateSheet()" style="text-align:center; font-size:1rem; border:none;">
+                        <option value="int">INT</option><option value="wis">WIS</option><option value="cha">CHA</option>
+                    </select>
+                </div>
+                <div class="combat-stat"><label class="input-label">Save DC</label><input type="text" id="spellDC" readonly value="10"></div>
+                <div class="combat-stat"><label class="input-label">Attack</label><input type="text" id="spellAtk" readonly value="+2"></div>
+            </div>
+            <div class="list-panel">
+                <div class="panel-title"><span>Spell Slots</span> <button onclick="resetSlots()" style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:0.8rem; font-family:var(--font-main);">Reset All</button></div>
+                <div class="slot-tracker" id="slotContainer"></div>
+            </div>
+            <div class="list-panel" style="margin-top:20px;">
+                <div class="panel-title"><span>Grimoire</span><button class="btn-add" style="width:auto; padding:4px 10px; margin:0;" onclick="openSpellModal()">+ Spell</button></div>
+                <div id="spellbookContainer"></div>
+            </div>
+        </div>
+
+        <div id="tab-gear" class="tab-content">
+            <div class="list-panel" style="margin-bottom:20px;">
+                <div class="panel-title"><span>Tools & Proficiencies</span><button class="btn-add" style="width:auto; padding:4px 10px; margin:0;" onclick="openToolModal()">+</button></div>
+                <div id="toolsList"></div>
+            </div>
+
+            <div class="list-panel">
+                <div class="panel-title"><span>Inventory</span><button class="btn-add" style="width:auto; padding:4px 10px; margin:0;" onclick="openItemModal()">+ Item</button></div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr 30px; gap:5px; margin-bottom:10px; align-items:end;">
+                    <div class="input-group" style="margin:0"><label class="input-label" style="text-align:center">GP</label><input type="number" id="currGP" class="sheet-input" style="text-align:center; color:#b8860b; font-weight:bold;" oninput="updateEncumbrance()"></div>
+                    <div class="input-group" style="margin:0"><label class="input-label" style="text-align:center">SP</label><input type="number" id="currSP" class="sheet-input" style="text-align:center; color:#708090; font-weight:bold;" oninput="updateEncumbrance()"></div>
+                    <div class="input-group" style="margin:0"><label class="input-label" style="text-align:center">CP</label><input type="number" id="currCP" class="sheet-input" style="text-align:center; color:#8b4513; font-weight:bold;" oninput="updateEncumbrance()"></div>
+                    <button onclick="consolidateCoins()" title="Optimize Coins (Convert Up)" style="background:transparent; border:1px solid var(--border); color:var(--text-muted); cursor:pointer; height:30px; border-radius:4px; margin-bottom:5px;"><i class="ph ph-arrow-fat-up"></i></button>
+                </div>
+                <div><div class="encumbrance-bar"><div id="encBar" class="encumbrance-fill"></div></div><div id="encText" class="enc-text">0 / 150 lb</div></div>
+                <div class="inv-header"><div>Item</div><div style="text-align:center">Wgt</div><div style="text-align:center">Qty</div><div></div><div></div></div>
+                <div class="inv-list" id="invListContainer"></div>
+            </div>
+        </div>
+
+        <div id="tab-char" class="tab-content">
+            <div class="grid-2-col">
+                <div class="list-panel">
+                    <div class="panel-title">Appearance & Bio</div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                        <div class="input-group"><label class="input-label">Age</label><input type="text" id="bioAge" class="sheet-input"></div>
+                        <div class="input-group"><label class="input-label">Height</label><input type="text" id="bioHeight" class="sheet-input"></div>
+                        <div class="input-group"><label class="input-label">Weight</label><input type="text" id="bioWeight" class="sheet-input"></div>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                        <div class="input-group"><label class="input-label">Eyes</label><input type="text" id="bioEyes" class="sheet-input"></div>
+                        <div class="input-group"><label class="input-label">Skin</label><input type="text" id="bioSkin" class="sheet-input"></div>
+                        <div class="input-group"><label class="input-label">Hair</label><input type="text" id="bioHair" class="sheet-input"></div>
+                    </div>
+                    <div class="input-group" style="margin-top:10px;"><label class="input-label">Personality Traits</label><textarea id="bioPersonality" class="sheet-input" rows="3" oninput="saveData()"></textarea></div>
+                    <div class="input-group"><label class="input-label">Ideals</label><textarea id="bioIdeals" class="sheet-input" rows="2" oninput="saveData()"></textarea></div>
+                    <div class="input-group"><label class="input-label">Bonds</label><textarea id="bioBonds" class="sheet-input" rows="2" oninput="saveData()"></textarea></div>
+                    <div class="input-group"><label class="input-label">Flaws</label><textarea id="bioFlaws" class="sheet-input" rows="2" oninput="saveData()"></textarea></div>
+                </div>
+                <div class="list-panel">
+                    <div class="panel-title">History & Relations</div>
+                    <div class="input-group"><label class="input-label">Languages</label><textarea id="bioLanguages" class="sheet-input" rows="2" oninput="saveData()"></textarea></div>
+                    <div class="input-group"><label class="input-label">Allies & Organizations</label><textarea id="bioAllies" class="sheet-input" rows="4" oninput="saveData()"></textarea></div>
+                    <div class="input-group"><label class="input-label">Backstory & Notes</label><textarea id="bioNotes" class="sheet-input" rows="12" oninput="saveData()"></textarea></div>
+                </div>
+            </div>
+            
+            <div class="list-panel" style="margin-top: 20px;">
+                <div class="panel-title"><span><span id="journalCharName"></span>'s Journal</span> <button class="btn-add" style="width:auto; padding:4px 10px; margin:0;" onclick="addJournalEntry()">+ Entry</button></div>
+                <div id="journalContainer">
+                    </div>
+            </div>
+
+            <div class="list-panel" style="margin-top: 20px;">
+                <div class="panel-title">
+                    <span>Images & Stat Blocks</span>
+                    <button class="btn-add" style="width:auto; padding:4px 10px; margin:0;" onclick="document.getElementById('statBlockInput').click()">+ Image</button>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px; font-style: italic;">
+                    Tip: Click and drag the bottom-right corner of an image to resize it.
+                </div>
+                <div id="statBlocksContainer">
+                        </div>
+                <input type="file" id="statBlockInput" accept="image/*" class="hidden" onchange="addStatBlock(this)">
+            </div>
+        </div>
+
+
+        <div class="modal-overlay" id="itemModal">
+            <div class="modal">
+                <div class="panel-title">Add/Edit Item <i class="ph ph-x" style="cursor:pointer" onclick="closeModal('itemModal')"></i></div>
+                <div class="input-group"><label class="input-label">Name</label><input type="text" id="newItemName" class="sheet-input"></div>
+                <div class="input-group">
+                    <label class="input-label">Category</label>
+                    <div style="display:flex; gap:5px;">
+                        <select id="newItemCat" class="sheet-select" style="flex:1;" onchange="toggleItemFields()"></select>
+                        <button onclick="addCategory()" style="background:transparent; border:1px solid var(--border); width:35px;">+</button>
+                    </div>
+                </div>
+                <div id="armorFields" class="hidden" style="margin-bottom:10px; padding:10px; border:1px dashed var(--border);">
+                    <label class="input-label" style="color:var(--accent)">Armor Details</label>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px;">
+                        <input type="number" id="newItemAC" class="sheet-input" placeholder="Base AC">
+                        <select id="newItemArmorType" class="sheet-select">
+                            <option value="Light">Light</option><option value="Medium">Medium</option>
+                            <option value="Heavy">Heavy</option><option value="Shield">Shield</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="weaponFields" class="hidden" style="margin-bottom:10px; padding:10px; border:1px dashed var(--border);">
+                    <label class="input-label" style="color:var(--str)">Weapon Details</label>
+                    <input type="text" id="newItemDmg" class="sheet-input" placeholder="Damage (e.g. 1d8 slashing)">
+                    <div style="margin-top:5px; display:flex; gap:15px;">
+                        <label style="font-size:0.8rem;"><input type="checkbox" id="newItemFinesse"> Finesse</label>
+                        <label style="font-size:0.8rem;"><input type="checkbox" id="newItemRanged" onchange="toggleAmmoSelect()"> Ranged</label>
+                    </div>
+                    <select id="newItemAmmo" class="sheet-select hidden" style="margin-top:5px;"><option value="">- Select Ammo Item -</option></select>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                    <div class="input-group">
+                        <label class="input-label">Cost</label>
+                        <div style="display:flex;gap:2px;">
+                            <input type="number" id="newItemCost" class="sheet-input" value="0" style="flex:1">
+                            <select id="newItemCurrency" class="sheet-select" style="width:50px; text-align:center;">
+                                <option value="gp">gp</option><option value="sp">sp</option><option value="cp">cp</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-group"><label class="input-label" id="lblWeight">Weight (lb)</label><input type="number" id="newItemWeight" class="sheet-input" value="0"></div>
+                    <div class="input-group"><label class="input-label">Qty</label><input type="number" id="newItemQty" class="sheet-input" value="1"></div>
+                </div>
+                <div style="margin-top:5px; margin-bottom:10px;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top:5px; margin-bottom:10px;">
+                        <label style="font-size:0.8rem; display:flex; align-items:center; gap:5px;">
+                            <input type="checkbox" id="newItemProf"> Proficiency Item
+                        </label>
+                        <label style="font-size:0.8rem; display:flex; align-items:center; gap:5px;">
+                            <input type="checkbox" id="newItemMetric" onchange="toggleModalUnit()"> Is Metric (kg)
+                        </label>
+                        <label style="font-size:0.8rem; display:flex; align-items:center; gap:5px;">
+                            <input type="checkbox" id="newItemFocus"> Spellcasting Focus
+                        </label>
+                        <label style="font-size:0.8rem; display:flex; align-items:center; gap:5px;">
+                            <input type="checkbox" id="newItemPurchased"> Buy (Deduct Cost)
+                        </label>
+                    </div>
+                </div>
+                <div class="input-group"><label class="input-label">Notes</label><textarea id="newItemNotes" class="sheet-input" rows="2"></textarea></div>
+                <button class="btn-add" style="border:1px solid var(--text-main); color:var(--text-main)" onclick="addItemFromModal()">Save</button>
+            </div>
+        </div>
+        
+        <div class="modal-overlay" id="raceModal">
+            <div class="modal">
+                <div class="panel-title">Add Custom Race <i class="ph ph-x" style="cursor:pointer" onclick="closeModal('raceModal')"></i></div>
+                <div class="input-group"><label class="input-label">Race Name</label><input type="text" id="newRaceName" class="sheet-input"></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:5px;">
+                    <div class="input-group"><label class="input-label">STR</label><input type="number" id="nrStr" class="sheet-input" value="0"></div>
+                    <div class="input-group"><label class="input-label">DEX</label><input type="number" id="nrDex" class="sheet-input" value="0"></div>
+                    <div class="input-group"><label class="input-label">CON</label><input type="number" id="nrCon" class="sheet-input" value="0"></div>
+                    <div class="input-group"><label class="input-label">INT</label><input type="number" id="nrInt" class="sheet-input" value="0"></div>
+                    <div class="input-group"><label class="input-label">WIS</label><input type="number" id="nrWis" class="sheet-input" value="0"></div>
+                    <div class="input-group"><label class="input-label">CHA</label><input type="number" id="nrCha" class="sheet-input" value="0"></div>
+                </div>
+                <div class="input-group"><label class="input-label">Speed (ft)</label><input type="text" id="nrSpeed" class="sheet-input" value="30"></div>
+                <button class="btn-add" style="border:1px solid var(--text-main); color:var(--text-main)" onclick="addCustomRace()">Add Race</button>
+            </div>
+        </div>
+        
+        <div class="modal-overlay" id="classModal">
+            <div class="modal">
+                <div class="panel-title">Add Custom Class <i class="ph ph-x" style="cursor:pointer" onclick="closeModal('classModal')"></i></div>
+                <div class="input-group"><label class="input-label">Class Name</label><input type="text" id="newClassName" class="sheet-input"></div>
+                <div class="input-group"><label class="input-label">Hit Die</label><input type="text" id="ncHD" class="sheet-input" placeholder="d8"></div>
+                <button class="btn-add" style="border:1px solid var(--text-main); color:var(--text-main)" onclick="addCustomClass()">Add Class</button>
+            </div>
+        </div>
+        
+        <div class="modal-overlay" id="spellModal">
+            <div class="modal">
+                <div class="panel-title">Add/Edit Spell <i class="ph ph-x" style="cursor:pointer" onclick="closeModal('spellModal')"></i></div>
+                <div class="input-group"><label class="input-label">Spell Name</label><input type="text" id="nsName" class="sheet-input"></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="input-group"><label class="input-label">Level</label><input type="number" id="nsLevel" class="sheet-input" value="0"></div>
+                    <div class="input-group"><label class="input-label">School</label><input type="text" id="nsSchool" class="sheet-input" placeholder="Evocation"></div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="input-group"><label class="input-label">Time</label><input type="text" id="nsTime" class="sheet-input" value="1 Action"></div>
+                    <div class="input-group"><label class="input-label">Range</label><input type="text" id="nsRange" class="sheet-input" value="60 ft"></div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <div class="input-group"><label class="input-label">Duration</label><input type="text" id="nsDur" class="sheet-input" value="Instant"></div>
+                    <div class="input-group"><label class="input-label">Damage/Effect</label><input type="text" id="nsDmg" class="sheet-input" placeholder="8d6 Fire"></div>
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Consumed Materials (Syntax: Name (Value))</label>
+                    <div id="nsCompsList"></div>
+                    <button class="btn-add" style="width:30px; margin-top:5px;" onclick="addSpellCompRow()">+</button>
+                </div>
+                <div class="input-group"><label class="input-label">Description</label><textarea id="nsDesc" class="sheet-input" rows="3"></textarea></div>
+                <button class="btn-add" style="border:1px solid var(--text-main); color:var(--text-main)" onclick="addSpellFromModal()">Save</button>
+            </div>
+        </div>
+        
+        <div class="modal-overlay" id="featModal">
+            <div class="modal">
+                <div class="panel-title">Add/Edit Feature <i class="ph ph-x" style="cursor:pointer" onclick="closeModal('featModal')"></i></div>
+                <div class="input-group"><label class="input-label">Name</label><input type="text" id="nfName" class="sheet-input"></div>
+                <div class="input-group">
+                    <label class="input-label">Type</label>
+                    <select id="nfType" class="sheet-select">
+                        <option value="Class Feat">Class Feat</option><option value="Race Trait">Race Trait</option><option value="Miscellaneous">Miscellaneous</option>
+                    </select>
+                </div>
+                <div class="input-group"><label class="input-label">Description</label><textarea id="nfDesc" class="sheet-input" rows="4"></textarea></div>
+                <button class="btn-add" style="border:1px solid var(--text-main); color:var(--text-main)" onclick="addFeatFromModal()">Save</button>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="toolModal">
+            <div class="modal">
+                <div class="panel-title">Add Tool Proficiency <i class="ph ph-x" style="cursor:pointer" onclick="closeModal('toolModal')"></i></div>
+                <div class="input-group"><label class="input-label">Tool Name</label><input type="text" id="ntName" class="sheet-input"></div>
+                <button class="btn-add" style="border:1px solid var(--text-main); color:var(--text-main)" onclick="addToolFromModal()">Add</button>
+            </div>
+        </div>
+
+        <div class="modal-overlay" id="catModal">
+            <div class="modal" style="width: 300px;">
+                <div class="panel-title">Add Category <i class="ph ph-x" style="cursor:pointer" onclick="closeModal('catModal')"></i></div>
+                <div class="input-group"><label class="input-label">Category Name</label><input type="text" id="newCatNameInput" class="sheet-input"></div>
+                <button class="btn-add" style="border:1px solid var(--text-main); color:var(--text-main)" onclick="confirmAddCategory()">Add</button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- INDEXED DB HELPER (Limitless Storage) ---
+        const DBName = "TitanDnDDB";
+        const DBStore = "images";
+        const DB = {
+            open: () => {
+                return new Promise((resolve, reject) => {
+                    const req = indexedDB.open(DBName, 1);
+                    req.onupgradeneeded = (e) => { e.target.result.createObjectStore(DBStore); };
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            save: async (id, data) => {
+                if (!data) return;
+                const db = await DB.open();
+                const tx = db.transaction(DBStore, 'readwrite');
+                tx.objectStore(DBStore).put(data, id);
+                return new Promise(resolve => tx.oncomplete = resolve);
+            },
+            get: async (id) => {
+                const db = await DB.open();
+                return new Promise(resolve => {
+                    const req = db.transaction(DBStore, 'readonly').objectStore(DBStore).get(id);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => resolve(null);
+                });
+            },
+            clear: async () => {
+                const db = await DB.open();
+                const tx = db.transaction(DBStore, 'readwrite');
+                tx.objectStore(DBStore).clear();
+                return new Promise(resolve => tx.oncomplete = resolve);
+            }
+        };
+        // --- STATE ---
+        let useMetric = false;
+        let inspiration = false;
+        let editingItemIndex = null;
+        let editingSpellIndex = null;
+        let editingFeatIndex = null;
+        
+        // MULTICLASS STATE
+        let charClasses = []; 
+        
+        // JOURNAL STATE
+        let journal = [];
+
+        // IMAGES&STATBLOCKS STATE
+        let statImages = [];
+
+        // Helper functions to get default DBs for initialization and reset
+        function getInitialRaces() {
+            return {
+                "Dwarf": { str: 0, dex: 0, con: 2, int: 0, wis: 0, cha: 0, speed: "25" },
+                "Elf": { str: 0, dex: 2, con: 0, int: 0, wis: 0, cha: 0, speed: "30" },
+                "Halfling": { str: 0, dex: 2, con: 0, int: 0, wis: 0, cha: 0, speed: "25" },
+                "Human": { str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 1, speed: "30" },
+                "Dragonborn": { str: 2, dex: 0, con: 0, int: 0, wis: 0, cha: 1, speed: "30" },
+                "Gnome": { str: 0, dex: 0, con: 0, int: 2, wis: 0, cha: 0, speed: "25" },
+                "Half-Elf": { str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 2, speed: "30" },
+                "Half-Orc": { str: 2, dex: 0, con: 1, int: 0, wis: 0, cha: 0, speed: "30" },
+                "Tiefling": { str: 0, dex: 0, con: 0, int: 1, wis: 0, cha: 2, speed: "30" }
+            };
+        }
+
+        function getInitialClasses() {
+            return {
+                "Barbarian": { hd: "d12" }, "Bard": { hd: "d8" }, "Cleric": { hd: "d8" }, "Druid": { hd: "d8" }, 
+                "Fighter": { hd: "d10" }, "Monk": { hd: "d8" }, "Paladin": { hd: "d10" }, "Ranger": { hd: "d10" }, 
+                "Rogue": { hd: "d8" }, "Sorcerer": { hd: "d6" }, "Warlock": { hd: "d8" }, "Wizard": { hd: "d6" }
+            };
+        }
+
+        let racesDB = getInitialRaces();
+        let classesDB = getInitialClasses();
+
+        const attributes = ['Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha'];
+        const skillsData = [
+            { n: 'Acrobatics', a: 'Dex' }, { n: 'Animal Handling', a: 'Wis' }, { n: 'Arcana', a: 'Int' },
+            { n: 'Athletics', a: 'Str' }, { n: 'Deception', a: 'Cha' }, { n: 'History', a: 'Int' },
+            { n: 'Insight', a: 'Wis' }, { n: 'Intimidation', a: 'Cha' }, { n: 'Investigation', a: 'Int' },
+            { n: 'Medicine', a: 'Wis' }, { n: 'Nature', a: 'Int' }, { n: 'Perception', a: 'Wis' },
+            { n: 'Performance', a: 'Cha' }, { n: 'Persuasion', a: 'Cha' }, { n: 'Religion', a: 'Int' },
+            { n: 'Sleight of Hand', a: 'Dex' }, { n: 'Stealth', a: 'Dex' }, { n: 'Survival', a: 'Wis' }
+        ];
+
+        let inventory = [];
+        let feats = [];
+        let spells = [];
+        let tools = [];
+        let itemCategories = ['Weapon', 'Armor', 'Gear', 'Magic Item', 'Consumable'];
+
+        // --- UNIT CONVERSION ---
+        function toggleUnits() {
+            useMetric = document.getElementById('unitToggle').checked;
+            document.getElementById('lblWeight').innerText = useMetric ? "Weight (kg)" : "Weight (lb)";
+            updateSheet();
+            renderInventory();
+            renderSpellbook();
+        }
+
+        function toggleModalUnit() {
+            const isM = document.getElementById('newItemMetric').checked;
+            document.getElementById('lblWeight').innerText = isM ? "Weight (kg)" : "Weight (lb)";
+        }
+
+        function formatDist(val) {
+            const num = parseFloat(val);
+            if(isNaN(num)) return val;
+            if(useMetric) return (num * 0.3).toFixed(1) + " m";
+            return num + " ft";
+        }
+
+        function formatWgt(val) {
+            const num = parseFloat(val);
+            if(isNaN(num)) return val;
+            // 1 lb = 0.5 kg (Requested 1 decimal, factor 0.5)
+            if(useMetric) return (num * 0.5).toFixed(1) + " kg";
+            return num.toFixed(1) + " lb";
+        }
+
+        // Removed formatInitInput as it is no longer needed with the new Initiative logic
+
+        // Helper to format text for HTML display
+        function convertText(text) {
+            if (!text) return "";
+            
+            let clean = String(text)
+                // 1. Normalize line breaks first
+                .replace(/\r\n/g, "\n")
+                .replace(/\r/g, "\n")
+
+                // 2. Sanitize weird Word bullets into standard dashes
+                .replace(/\uf0b7/g, "\n- ") 
+                .replace(//g, "- ")
+                .replace(/\u2022/g, "\n- ")
+                .replace(/\u2023/g, "\n- ")
+
+                // 3. Render Tags (Bold & Red)
+                .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                .replace(/<r>(.*?)<\/r>/g, '<span style="color: #911111; font-weight:bold;">$1</span>');
+
+            // 4. "SMART WRAP" LOGIC
+            // Step A: Protect real paragraphs (Double Enters) by renaming them temporarily
+            clean = clean.replace(/\n\s*\n/g, "{{PARAGRAPH}}");
+
+            // Step B: If a Newline is NOT followed by a Dash (-), turn it into a Space.
+            // The Regex \n(?!\s*-) looks for an Enter that does NOT have a dash after it.
+            clean = clean.replace(/\n(?!\s*-)/g, " ");
+
+            // Step C: Restore the real paragraphs
+            clean = clean.replace(/{{PARAGRAPH}}/g, "\n\n");
+
+            // 5. Final HTML conversion
+            return clean.trim().replace(/\n/g, '<br>');
+        }
+
+        // --- CUSTOM ALERTS ---
+        function showPopup(message) {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay active';
+            overlay.style.zIndex = '200';
+            overlay.innerHTML = `<div class="modal" style="height:auto; min-height:100px; text-align:center;">
+                <p>${message}</p>
+                <button class="btn-add" style="margin-top:10px; width:100px; border:1px solid var(--text-main); color:var(--text-main);" 
+                        onclick="this.closest('.modal-overlay').remove()">OK</button>
+            </div>`;
+            document.body.appendChild(overlay);
+        }
+
+        function showConfirm(message, onYes) {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay active';
+            overlay.style.zIndex = '200';
+            overlay.innerHTML = `<div class="modal" style="height:auto; min-height:100px; text-align:center;">
+                <p>${message}</p>
+                <div style="display:flex; gap:10px; justify-content:center; margin-top:10px;">
+                    <button class="btn-add" style="width:80px; border:1px solid var(--text-main); color:var(--text-main);" 
+                            id="confirmYes">Yes</button>
+                    <button class="btn-add" style="width:80px; border:1px solid var(--accent); color:var(--accent);" 
+                            onclick="this.closest('.modal-overlay').remove()">No</button>
+                </div>
+            </div>`;
+            document.body.appendChild(overlay);
+            document.getElementById('confirmYes').onclick = function() { overlay.remove(); onYes(); };
+        }
+
+        // --- INITIALIZATION ---
+        async function init() {
+            buildLists();
+            await loadData(); // Wait for data and images to load
+            updateRaceSelect(); 
+            updateCatSelect();
+            
+            // Ensure at least one class row
+            if(charClasses.length === 0) charClasses.push({name: '', level: 1});
+            renderClassRows();
+
+            updateSheet(); 
+            renderInventory(); renderFeats(); renderSpellbook(); renderTools(); renderJournal();
+            updateXP();
+        }
+
+        function buildLists() {
+            const savesContainer = document.getElementById('savesList');
+            attributes.forEach(attr => {
+                savesContainer.innerHTML += `<div class="skill-row"><div class="skill-prof" id="saveProf_${attr}" 
+                    onclick="toggleProf('saveProf_${attr}')"></div><div class="skill-mod" id="saveVal_${attr}">+0</div>
+                    <div class="skill-name">${attr} Save</div></div>`;
+            });
+            const skillsContainer = document.getElementById('skillsList');
+            skillsData.forEach((skill, i) => {
+                // Added Disadvantage Toggle (.skill-dis)
+                skillsContainer.innerHTML += `<div class="skill-row">
+                    <div class="skill-prof" id="skillProf_${i}" onclick="toggleProf('skillProf_${i}', true)"></div>
+                    <div class="skill-mod" id="skillVal_${i}">+0</div>
+                    <div class="skill-name">${skill.n} <span style="font-size:0.7rem; color:var(--text-muted)">(${skill.a})</span></div>
+                    <input type="number" class="skill-bonus-input" id="skillBonus_${i}" placeholder="+Misc" oninput="updateSheet()">
+                    <div class="skill-dis" id="skillDis_${i}" onclick="toggleDis(${i})" title="Toggle Disadvantage">D</div>
+                </div>`;
+            });
+
+            const slotContainer = document.getElementById('slotContainer');
+            
+            // Enforce Grid Layout (5 columns = 2 rows of 5 items)
+            slotContainer.style.display = "grid";
+            slotContainer.style.gridTemplateColumns = "repeat(5, 1fr)";
+            slotContainer.style.gap = "10px";
+            
+            slotContainer.innerHTML = '';
+
+            // 1. Standard Slots (Levels 1-9)
+            for(let i=1; i<=9; i++) {
+                slotContainer.innerHTML += `<div class="slot-group">
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; font-weight:bold;">
+                        <span>Lvl ${i}</span>
+                        <input type="number" id="slotMax_${i}" value="0" min="0" max="9" 
+                            style="width:30px; background:transparent; border:none; text-align:right;" 
+                            oninput="renderPips(${i}); saveData()">
+                    </div>
+                    <div class="pips" id="pips_${i}"></div>
+                </div>`;
+            }
+
+            // 2. Special Points (Placed as the 10th item to complete the grid)
+            // Made inputs smaller and removed extra margins to fit cleanly in the grid cell
+            slotContainer.innerHTML += `
+                <div class="slot-group" style="border-color:var(--accent); display:flex; flex-direction:column; justify-content:center;">
+                    <div style="font-size:0.7rem; font-weight:bold; color:var(--accent); text-align:center; margin-bottom:2px; white-space:nowrap;">Special Points</div>
+                    <div style="display:flex; justify-content:center; align-items:center; gap:2px;">
+                        <input type="number" id="specialPointsCurr" class="sheet-input" 
+                            style="width:100%; text-align:center; font-weight:bold; color:var(--accent); font-size:0.9rem; padding:0;" 
+                            placeholder="0" oninput="saveData()">
+                        <span style="color:var(--text-muted); font-size:0.8rem;">/</span>
+                        <input type="number" id="specialPointsMax" class="sheet-input" 
+                            style="width:100%; text-align:center; font-size:0.9rem; padding:0;" 
+                            placeholder="0" oninput="saveData()">
+                    </div>
+                </div>
+            `;
+        }
+
+
+        function toggleDis(i) {
+            document.getElementById(`skillDis_${i}`).classList.toggle('active');
+            saveData();
+        }
+
+        function renderPips(level) {
+            const count = document.getElementById(`slotMax_${level}`).value;
+            const container = document.getElementById(`pips_${level}`);
+            let usedCount = 0;
+            if(container.children.length > 0) usedCount = Array.from(container.children).filter(c => c.classList.contains('used')).length;
+            container.innerHTML = '';
+            for(let i=0; i<count; i++) {
+                const pip = document.createElement('div'); pip.className = 'pip';
+                if (i < usedCount) pip.classList.add('used');
+                pip.onclick = function() { this.classList.toggle('used'); saveData(); };
+                container.appendChild(pip);
+            }
+        }
+
+        // --- SIDEBAR ---
+        function toggleSidebar() {
+            const sb = document.getElementById('sidebar');
+            sb.classList.toggle('collapsed');
+        }
+
+        // --- CLASS MANAGEMENT ---
+        function renderClassRows() {
+            const container = document.getElementById('classesContainer');
+            container.innerHTML = '';
+            
+            // Build options string once
+            let options = '<option value="">- Select -</option>';
+            Object.keys(classesDB).forEach(c => options += `<option value="${c}">${c}</option>`);
+
+            charClasses.forEach((cls, index) => {
+                const row = document.createElement('div');
+                row.className = 'class-row';
+                row.innerHTML = `
+                    <select class="sheet-select" onchange="updateClassRow(${index}, 'name', this.value)">${options}</select>
+                    <input type="number" class="sheet-input" value="${cls.level}" min="1" 
+                        oninput="updateClassRow(${index}, 'level', this.value)" style="text-align:center;">
+                    ${index > 0 ? `<i class="ph ph-trash" style="cursor:pointer; color:var(--accent)" onclick="removeClassRow(${index})"></i>` : '<span></span>'}
+                `;
+                // Set value
+                row.querySelector('select').value = cls.name;
+                container.appendChild(row);
+            });
+            
+            updateSheet();
+        }
+
+        function updateClassRow(index, field, value) {
+            if(field === 'level') value = parseInt(value) || 1;
+            charClasses[index][field] = value;
+            updateSheet();
+        }
+
+        function addClassRow() {
+            charClasses.push({name: '', level: 1});
+            renderClassRows();
+            saveData();
+        }
+
+        function removeClassRow(index) {
+            charClasses.splice(index, 1);
+            renderClassRows();
+            saveData();
+        }
+
+        // --- XP TRACKER ---
+        const xpTable = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
+        
+        function updateXP() {
+            const xp = parseInt(document.getElementById('charXP').value) || 0;
+            let lvl = 1;
+            for(let i=0; i<xpTable.length; i++) {
+                if(xp >= xpTable[i]) lvl = i+1;
+            }
+            
+            // Visuals
+            const currentBase = xpTable[lvl-1] || 0;
+            const nextTarget = xpTable[lvl] || 355000;
+            const progress = Math.min(100, Math.max(0, ((xp - currentBase) / (nextTarget - currentBase)) * 100));
+            
+            document.getElementById('xpBar').style.width = progress + "%";
+            document.getElementById('xpText').innerText = `${xp} / ${nextTarget} (Lvl ${lvl})`;
+            
+            // Note: With multiclass, XP just shows what level you SHOULD be. It doesn't auto-set class levels anymore.
+            saveData();
+        }
+
+        // --- INSPIRATION ---
+        function toggleInspiration() {
+            inspiration = !inspiration;
+            const el = document.getElementById('inspirationToggle');
+            if(inspiration) el.classList.add('active'); else el.classList.remove('active');
+            saveData();
+        }
+
+        // --- CORE LOGIC ---
+        function updateRaceStats() {
+            const race = document.getElementById('charRace').value;
+            if(racesDB[race]) {
+                const r = racesDB[race];
+                attributes.forEach(attr => {
+                    const bonus = r[attr.toLowerCase()] || 0;
+                    document.getElementById(`raceMod${attr}`).innerText = bonus > 0 ? `+${bonus}` : '';
+                });
+            }
+            updateSheet();
+        }
+
+        function updateSheet() {
+            document.getElementById('journalCharName').innerText = document.getElementById('charName').value;
+            // Calculate Total Level
+            let totalLvl = 0;
+            let hitDiceStr = [];
+            charClasses.forEach(c => {
+                const l = parseInt(c.level) || 0;
+                totalLvl += l;
+                if(c.name && classesDB[c.name]) {
+                    hitDiceStr.push(`${l}${classesDB[c.name].hd}`);
+                }
+            });
+            if(totalLvl < 1) totalLvl = 1;
+            
+            document.getElementById('charLevel').value = totalLvl; // hidden input for backward compat
+            document.getElementById('totalLevelDisplay').innerText = totalLvl;
+            
+            // Update Hit Dice Display
+            document.getElementById('hitDice').value = hitDiceStr.join(' + ');
+
+            const prof = Math.ceil(totalLvl / 4) + 1;
+            document.getElementById('dispProf').innerText = `+${prof}`;
+
+            const mods = {};
+            attributes.forEach(attr => {
+                let score = parseInt(document.getElementById(`attr${attr}`).value) || 10;
+                const raceText = document.getElementById(`raceMod${attr}`).innerText;
+                if(raceText) score += parseInt(raceText.replace('+',''));
+                const mod = Math.floor((score - 10) / 2);
+                mods[attr] = mod;
+                document.getElementById(`mod${attr}`).innerText = mod >= 0 ? `+${mod}` : mod;
+            });
+
+            attributes.forEach(attr => {
+                const isProf = document.getElementById(`saveProf_${attr}`).classList.contains('active');
+                document.getElementById(`saveVal_${attr}`).innerText = formatBonus(mods[attr] + (isProf ? prof : 0));
+            });
+
+            skillsData.forEach((skill, i) => {
+                const el = document.getElementById(`skillProf_${i}`);
+                let bonus = mods[skill.a];
+                if (el.classList.contains('active')) bonus += prof;
+                if (el.classList.contains('expertise')) bonus += prof;
+                
+                // Add misc bonus
+                const misc = parseInt(document.getElementById(`skillBonus_${i}`).value) || 0;
+                bonus += misc;
+
+                document.getElementById(`skillVal_${i}`).innerText = formatBonus(bonus);
+                if (skill.n === 'Perception') document.getElementById('dispPassivePerc').innerText = 10 + bonus;
+            });
+
+            const raceVal = document.getElementById('charRace').value;
+            const race = racesDB[raceVal];
+            const rawSpeed = race ? race.speed : 30;
+            document.getElementById('dispSpeed').innerText = formatDist(rawSpeed);
+
+            updateAC(mods.Dex);
+
+            const castStat = document.getElementById('spellAbility').value; 
+            const formattedStat = castStat.charAt(0).toUpperCase() + castStat.slice(1);
+            const castMod = mods[formattedStat] || 0;
+            document.getElementById('spellAtk').value = formatBonus(castMod + prof);
+            document.getElementById('spellDC').value = 8 + castMod + prof;
+
+            // Initiative Calc
+            const initMisc = parseInt(document.getElementById('valInitMisc').value) || 0;
+            const totalInit = mods.Dex + initMisc;
+            document.getElementById('dispInit').innerText = formatBonus(totalInit);
+
+            updateEncumbrance();
+            saveData();
+            return mods; 
+        }
+
+        function formatBonus(val) { return val >= 0 ? `+${val}` : val; }
+
+        function updateAC(dexMod) {
+            // If called directly (e.g. from select change), dexMod might be undefined.
+            // If undefined, recalculate it or grab from DOM.
+            if (dexMod === undefined) {
+                const modText = document.getElementById('modDex').innerText;
+                dexMod = parseInt(modText) || 0;
+            }
+
+            // Get Secondary Stat Mod
+            const secStat = document.getElementById('acSecStat').value;
+            let secMod = 0;
+            if(secStat) {
+                const modText = document.getElementById(`mod${secStat}`).innerText;
+                secMod = parseInt(modText) || 0;
+            }
+
+            // Get Misc Bonus
+            const misc = parseInt(document.getElementById('acMisc').value) || 0;
+
+            const equipSelect = document.getElementById('equippedArmor');
+            const idx = equipSelect.value;
+            
+            let baseAC = 10;
+            let calcAC = 0;
+
+            if (idx !== "") {
+                // Armor Equipped
+                const item = inventory[idx];
+                if (item && item.cat === 'Armor') {
+                    const base = parseInt(item.ac) || 10;
+                    const type = item.armorType;
+                    
+                    if (type === 'Light') {
+                        // Base + Dex + Sec + Misc
+                        calcAC = base + dexMod + secMod + misc;
+                    } else if (type === 'Medium') {
+                        // Base + Min(Dex, 2) + Sec + Misc
+                        calcAC = base + Math.min(dexMod, 2) + secMod + misc;
+                    } else if (type === 'Heavy') {
+                        // Base + Sec + Misc (No Dex)
+                        calcAC = base + secMod + misc;
+                    } else if (type === 'Shield') {
+                        // Shield implies 10 base (unarmored) + Dex + Shield AC (2) + Sec + Misc
+                        // NOTE: Typically shields add to AC, not replace. 
+                        // This logic assumes "equippedArmor" is the main body armor.
+                        // If user selects a shield as their "Armor", it treats it as base 10 + dex + shield bonus.
+                        calcAC = 10 + dexMod + (base - 10 + 2) + secMod + misc; 
+                        // ^ Correcting logic: item.ac is usually just the bonus for shields in data? 
+                        // If user put "2" in AC for shield, base is 2. If user put "12", base is 12.
+                        // Let's assume standard behavior: Base 10 + Dex + Sec + Misc + (Shield AC if selected here)
+                        // If the item is a shield, typically you add it to armor. 
+                        // Since this is a single slot, we'll treat "Equipping a Shield" here as "Unarmored + Shield".
+                        let shieldBonus = 2;
+                        if(base > 10) shieldBonus = base - 10; // If they entered "12", bonus is 2.
+                        else if (base > 0 && base < 10) shieldBonus = base; // If they entered "2", bonus is 2.
+                        
+                        calcAC = 10 + dexMod + shieldBonus + secMod + misc;
+                    }
+                }
+            } else {
+                // No Armor: 10 + Dex + Sec + Misc
+                calcAC = 10 + dexMod + secMod + misc;
+            }
+            
+            document.getElementById('valAC').value = calcAC;
+        }
+
+        // --- INITIATIVE & COMBAT ---
+        function rollInitiative() {
+            // Roll uses calculated total
+            const totalStr = document.getElementById('dispInit').innerText;
+            const total = parseInt(totalStr) || 0;
+            const roll = Math.floor(Math.random() * 20) + 1;
+            const final = roll + total;
+            const msg = `Initiative Roll:\n\nD20 (${roll}) + Init (${formatBonus(total)}) = ${final}`;
+            showPopup(msg);
+        }
+
+        // --- TOOLS ---
+        function openToolModal() {
+            document.getElementById('toolModal').classList.add('active');
+            document.getElementById('ntName').focus();
+        }
+        
+        function addToolFromModal() {
+            const name = document.getElementById('ntName').value;
+            if(name) { 
+                tools.push(name); 
+                renderTools(); 
+                saveData(); 
+                closeModal('toolModal');
+                document.getElementById('ntName').value = '';
+            }
+        }
+
+        function renderTools() {
+            const list = document.getElementById('toolsList');
+            list.innerHTML = "";
+            tools.forEach((t, i) => {
+                const div = document.createElement('div'); div.className = 'tool-row';
+                div.innerHTML = `<span style="flex:1">${t}</span>
+                                <i class="ph ph-trash btn-del" onclick="tools.splice(${i},1); renderTools(); saveData()"></i>`;
+                list.appendChild(div);
+            });
+        }
+
+        // --- JOURNAL ---
+        function addJournalEntry() {
+            const nextSessionNum = journal.length + 1;
+            journal.push({ title: `Session ${nextSessionNum}`, content: "" });
+            renderJournal();
+            saveData();
+        }
+
+        function renderJournal() {
+            const container = document.getElementById('journalContainer');
+            container.innerHTML = '';
+            
+            // Sort reverse chronological? Standard usually chronological. Let's do chronological (newest at bottom).
+            journal.forEach((entry, idx) => {
+                const div = document.createElement('div');
+                div.className = 'journal-entry';
+                div.innerHTML = `
+                    <div class="journal-header">
+                        <div style="flex:1">
+                            <input type="text" class="journal-title-input" value="${entry.title}" 
+                                oninput="updateJournal(${idx}, 'title', this.value)">
+                        </div>
+                        <i class="ph ph-trash btn-del" style="margin-left:10px;" onclick="deleteJournal(${idx})"></i>
+                    </div>
+                    <textarea class="journal-body" placeholder="Write your notes here..." 
+                            oninput="updateJournal(${idx}, 'content', this.value)">${entry.content}</textarea>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function updateJournal(idx, field, val) {
+            journal[idx][field] = val;
+            saveData();
+        }
+
+        function deleteJournal(idx) {
+            showConfirm("Delete this journal entry?", () => {
+                journal.splice(idx, 1);
+                renderJournal();
+                saveData();
+            });
+        }
+
+        // --- ITEM SYSTEM ---
+        function updateCatSelect() {
+            const sel = document.getElementById('newItemCat');
+            const current = sel.value;
+            sel.innerHTML = '';
+            itemCategories.forEach(c => { 
+                const opt = document.createElement('option'); opt.value = c; opt.innerText = c; sel.appendChild(opt); 
+            });
+            if(current) sel.value = current;
+        }
+        function addCategory() {
+            // Replaced prompt with Modal
+            document.getElementById('catModal').classList.add('active');
+            document.getElementById('newCatNameInput').value = '';
+            document.getElementById('newCatNameInput').focus();
+        }
+
+        function confirmAddCategory() {
+            const newCat = document.getElementById('newCatNameInput').value;
+            if (newCat && !itemCategories.includes(newCat)) { 
+                itemCategories.push(newCat); 
+                updateCatSelect(); 
+                document.getElementById('newItemCat').value = newCat; 
+                saveData(); 
+            }
+            closeModal('catModal');
+        }
+
+        function toggleAmmoSelect() {
+            const isRanged = document.getElementById('newItemRanged').checked;
+            const ammoSel = document.getElementById('newItemAmmo');
+            if(isRanged) ammoSel.classList.remove('hidden');
+            else ammoSel.classList.add('hidden');
+        }
+
+        function toggleItemFields() {
+            const cat = document.getElementById('newItemCat').value;
+            document.getElementById('armorFields').classList.add('hidden');
+            document.getElementById('weaponFields').classList.add('hidden');
+            if (cat === 'Armor') document.getElementById('armorFields').classList.remove('hidden');
+            if (cat === 'Weapon') document.getElementById('weaponFields').classList.remove('hidden');
+        }
+        
+        function openItemModal() {
+            editingItemIndex = null;
+            document.getElementById('itemModal').classList.add('active');
+            if(document.getElementById('newItemCat').options.length === 0) updateCatSelect();
+            
+            // Populate Ammo Select
+            const ammoSel = document.getElementById('newItemAmmo');
+            ammoSel.innerHTML = '<option value="">- Select Ammo Item -</option>';
+            inventory.forEach(i => {
+                const opt = document.createElement('option');
+                opt.value = i.n;
+                opt.innerText = i.n;
+                ammoSel.appendChild(opt);
+            });
+
+            // Clear fields
+            document.getElementById('newItemName').value = '';
+            document.getElementById('newItemWeight').value = '0';
+            document.getElementById('newItemQty').value = '1';
+            document.getElementById('newItemCost').value = '0';
+            document.getElementById('newItemCurrency').value = 'gp';
+            document.getElementById('newItemNotes').value = '';
+            document.getElementById('newItemAC').value = '';
+            document.getElementById('newItemDmg').value = '';
+            document.getElementById('newItemPurchased').checked = false;
+            document.getElementById('newItemFinesse').checked = false;
+            document.getElementById('newItemRanged').checked = false;
+            document.getElementById('newItemAmmo').classList.add('hidden');
+            document.getElementById('newItemAmmo').value = '';
+
+            
+            // Initialize unit state based on global preference
+            const chk = document.getElementById('newItemMetric');
+            chk.checked = useMetric; 
+            toggleModalUnit();
+            
+            toggleItemFields();
+        }
+        
+        function editItem(index) {
+            editingItemIndex = index;
+            const item = inventory[index];
+            document.getElementById('itemModal').classList.add('active');
+            if(document.getElementById('newItemCat').options.length === 0) updateCatSelect();
+
+            // Populate Ammo Select
+            const ammoSel = document.getElementById('newItemAmmo');
+            ammoSel.innerHTML = '<option value="">- Select Ammo Item -</option>';
+            inventory.forEach(i => {
+                if (i.n === item.n) return; // Don't link self
+                const opt = document.createElement('option');
+                opt.value = i.n;
+                opt.innerText = i.n;
+                ammoSel.appendChild(opt);
+            });
+            
+            document.getElementById('newItemName').value = item.n;
+            document.getElementById('newItemCat').value = item.cat;
+            
+            // Smart Unit Display for Edit
+            const chk = document.getElementById('newItemMetric');
+            chk.checked = useMetric; // Default to global
+            toggleModalUnit();
+            
+            let displayW = item.w;
+            if (useMetric) displayW = item.w * 0.5; // Show as Kg if user prefers metric
+
+            document.getElementById('newItemWeight').value = parseFloat(displayW.toFixed(1));
+            document.getElementById('newItemQty').value = item.q;
+            document.getElementById('newItemCost').value = item.cost;
+            document.getElementById('newItemCurrency').value = item.currency || 'gp';
+            document.getElementById('newItemNotes').value = item.note;
+            document.getElementById('newItemProf').checked = item.prof;
+            document.getElementById('newItemFocus').checked = item.isFocus || false; 
+            document.getElementById('newItemPurchased').checked = false;
+            
+            if (item.cat === 'Armor') {
+                document.getElementById('newItemAC').value = item.ac || '';
+                document.getElementById('newItemArmorType').value = item.armorType || 'Light';
+            }
+            if (item.cat === 'Weapon') {
+                document.getElementById('newItemDmg').value = item.dmg || '';
+                document.getElementById('newItemFinesse').checked = item.finesse || false;
+                document.getElementById('newItemRanged').checked = item.ranged || false;
+                if(item.ranged) {
+                    ammoSel.classList.remove('hidden');
+                    ammoSel.value = item.ammo || '';
+                } else {
+                    ammoSel.classList.add('hidden');
+                }
+            } else {
+                document.getElementById('newItemRanged').checked = false;
+                ammoSel.classList.add('hidden');
+            }
+            
+            toggleItemFields();
+        }
+
+        function addItemFromModal() {
+            const name = document.getElementById('newItemName').value;
+            if (!name) { showPopup("Item name required"); return; }
+            const cat = document.getElementById('newItemCat').value;
+            const prof = document.getElementById('newItemProf').checked;
+            const isFocus = document.getElementById('newItemFocus').checked;
+            const isMetric = document.getElementById('newItemMetric').checked;
+            const isPurchased = document.getElementById('newItemPurchased').checked;
+            let w = parseFloat(document.getElementById('newItemWeight').value) || 0;
+            
+            // Internal storage is ALWAYS LBS
+            // If input is Metric (kg) -> Convert to Lbs (Kg * 2)
+            // If input is Imperial (lb) -> Keep as is (stored as Lbs)
+            if(isMetric) w = w * 2.0;
+
+            const qty = parseInt(document.getElementById('newItemQty').value) || 1;
+            const costPer = parseFloat(document.getElementById('newItemCost').value) || 0;
+            const currency = document.getElementById('newItemCurrency').value || 'gp';
+
+            // Handle Purchase Logic
+            if (isPurchased && costPer > 0) {
+                let cp = parseInt(document.getElementById('currCP').value)||0;
+                let sp = parseInt(document.getElementById('currSP').value)||0;
+                let gp = parseInt(document.getElementById('currGP').value)||0;
+                let totalPlayerCP = cp + (sp * 10) + (gp * 100);
+
+                let itemCostCP = costPer * qty;
+                if(currency === 'gp') itemCostCP *= 100;
+                if(currency === 'sp') itemCostCP *= 10;
+                
+                if(totalPlayerCP < itemCostCP) {
+                    showPopup("Not enough money to purchase!");
+                    return;
+                }
+
+                totalPlayerCP -= itemCostCP;
+
+                // Redistribute coins
+                let newGP = Math.floor(totalPlayerCP / 100);
+                totalPlayerCP %= 100;
+
+                let newSP = Math.floor(totalPlayerCP / 10);
+                totalPlayerCP %= 10;
+                let newCP = totalPlayerCP;
+
+                document.getElementById('currGP').value = newGP;
+                document.getElementById('currSP').value = newSP;
+                document.getElementById('currCP').value = newCP;
+            }
+
+                const item = { 
+                    n: name, cat: cat, w: w, 
+                    q: qty, 
+                    cost: costPer,
+                    currency: currency,
+                    note: document.getElementById('newItemNotes').value, 
+                    prof: prof,
+                    isFocus: isFocus // NEW: Save Focus property
+                };
+                
+                if (cat === 'Armor') { 
+                    item.ac = document.getElementById('newItemAC').value; 
+                    item.armorType = document.getElementById('newItemArmorType').value; 
+                }
+                if (cat === 'Weapon') { 
+                    item.dmg = document.getElementById('newItemDmg').value; 
+                    item.finesse = document.getElementById('newItemFinesse').checked; 
+                    item.ranged = document.getElementById('newItemRanged').checked;
+                    if (item.ranged) {
+                        item.ammo = document.getElementById('newItemAmmo').value;
+                    }
+                }
+                
+                if (editingItemIndex !== null) {
+                    inventory[editingItemIndex] = item;
+                } else {
+                    inventory.push(item);
+                }
+                
+                renderInventory(); updateCombatOptions(); closeModal('itemModal'); saveData();
+            }
+            
+            function removeItem(index) { 
+                showConfirm("Delete item?", () => { 
+                    inventory.splice(index, 1); 
+                    renderInventory(); 
+                    updateCombatOptions(); 
+                    saveData(); 
+                }); 
+            }
+            
+            function modItemQty(index, amount, event) {
+                if(event) event.stopPropagation();
+                const item = inventory[index];
+                item.q = (parseInt(item.q) || 0) + amount;
+                if(item.q < 0) item.q = 0;
+                renderInventory();
+                saveData();
+            }
+
+            function renderInventory() {
+                const container = document.getElementById('invListContainer'); container.innerHTML = '';
+                const groups = {}; 
+                itemCategories.forEach(c => groups[c] = []); 
+                groups['Uncategorized'] = [];
+                
+                inventory.forEach((item, index) => { 
+                    item._idx = index; 
+                    groups[item.cat] ? groups[item.cat].push(item) : groups['Uncategorized'].push(item); 
+                });
+                
+                for (const [catName, items] of Object.entries(groups)) {
+                    if (items.length === 0) continue;
+                    const header = document.createElement('div'); 
+                    header.className = 'inv-cat-header'; header.innerText = catName; 
+                    container.appendChild(header);
+                    
+                    items.forEach(item => {
+                        let details = [];
+                        if(item.cat === 'Armor') details.push(`AC ${item.ac}`);
+                        if(item.cat === 'Weapon') details.push(convertText(item.dmg));
+                        if(item.cost > 0) details.push(`${item.cost}${item.currency || 'gp'}`);
+
+                        const entryDiv = document.createElement('div');
+                        entryDiv.className = 'inv-entry';
+                        
+                        // Build Tags
+                        let tags = '';
+                        if(item.prof) tags += '<span class="prof-tag">PROF</span>';
+                        if(item.ranged) tags += '<span class="prof-tag" style="background:var(--dex)">Ranged</span>';
+
+                        entryDiv.innerHTML = `
+                            <div class="inv-row" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                                <div style="flex:1">
+                                    <div class="inv-top"><b>${item.n}</b> ${tags}</div>
+                                    <div class="inv-sub">${details.join(' • ')}</div>
+                                </div>
+                                <div class="inv-stat">${formatWgt(item.w)}</div>
+                                <div class="inv-stat qty-box">
+                                    <button class="qty-btn-mini" onclick="modItemQty(${item._idx}, -1, event)">-</button>
+                                    <span style="min-width:20px;">${item.q}</span>
+                                    <button class="qty-btn-mini" onclick="modItemQty(${item._idx}, 1, event)">+</button>
+                                </div>
+                                <div class="btn-edit" onclick="event.stopPropagation(); editItem(${item._idx})">
+                                    <i class="ph ph-pencil-simple"></i>
+                                </div>
+                                <div class="btn-del" onclick="event.stopPropagation(); removeItem(${item._idx})">
+                                    <i class="ph ph-trash"></i>
+                                </div>
+                            </div>
+                            ${item.note ? `<div class="inv-note hidden">${convertText(item.note)}</div>` : '<div class="hidden"></div>'}
+                        `;
+                        container.appendChild(entryDiv);
+                    });
+                }
+                updateEncumbrance();
+            }
+
+            function consolidateCoins() {
+                let cp = parseInt(document.getElementById('currCP').value)||0;
+                let sp = parseInt(document.getElementById('currSP').value)||0;
+                let gp = parseInt(document.getElementById('currGP').value)||0;
+                
+                // Convert all to copper (1gp=100cp, 1sp=10cp)
+                let totalCP = cp + (sp * 10) + (gp * 100);
+                
+                // Calculate new denominations
+                let newGP = Math.floor(totalCP / 100);
+                totalCP %= 100;
+                let newSP = Math.floor(totalCP / 10);
+            totalCP %= 10;
+            
+            let newCP = totalCP;
+            
+            // Update inputs
+            document.getElementById('currGP').value = newGP;
+            document.getElementById('currSP').value = newSP;
+            document.getElementById('currCP').value = newCP;
+            
+            saveData();
+            updateEncumbrance();
+            showPopup(`Consolidated to ${newGP}gp, ${newSP}sp, ${newCP}cp`);
+        }
+
+        function updateEncumbrance() {
+            let score = parseInt(document.getElementById('attrStr').value) || 10;
+            const raceText = document.getElementById('raceModStr').innerText;
+            if(raceText) score += parseInt(raceText.replace('+',''));
+            
+            const maxLoad = score * 15;
+            let currentLoad = 0;
+            inventory.forEach(i => currentLoad += (i.w * i.q));
+            
+            const coins = (parseInt(document.getElementById('currGP').value)||0) 
+                        + (parseInt(document.getElementById('currSP').value)||0) 
+                        + (parseInt(document.getElementById('currCP').value)||0);
+            
+            currentLoad += coins/50;
+            const bar = document.getElementById('encBar');
+            const pct = Math.min((currentLoad / maxLoad) * 100, 100);
+            bar.style.width = `${pct}%`;
+            
+            document.getElementById('encText').innerHTML = 
+                `<strong>${formatWgt(currentLoad.toFixed(2))}</strong> / ${formatWgt(maxLoad)}`;
+            
+            if (currentLoad > maxLoad) bar.style.background = '#ef4444'; 
+            else bar.style.background = 'var(--border)';
+        }
+
+        function updateCombatOptions() {
+            const armorSel = document.getElementById('equippedArmor'); 
+            const currentVal = armorSel.value;
+            armorSel.innerHTML = '<option value="">No Armor</option>';
+            
+            inventory.forEach((item, idx) => { 
+                if(item.cat === 'Armor') { 
+                    const opt = document.createElement('option'); 
+                    opt.value = idx; 
+                    opt.innerText = item.n; 
+                    armorSel.appendChild(opt); 
+                } 
+            });
+            armorSel.value = currentVal;
+            
+            document.querySelectorAll('.item-select').forEach(sel => {
+                const val = sel.value; 
+                sel.innerHTML = '<option value="">- Custom -</option>';
+                inventory.forEach((item, idx) => { 
+                    // NEW: Allow Weapons OR items marked as Focus
+                    if(item.cat === 'Weapon' || item.isFocus) { 
+                        const opt = document.createElement('option'); 
+                        opt.value = idx; 
+                        opt.innerText = item.n; 
+                        sel.appendChild(opt); 
+                    } 
+                });
+                if(val) sel.value = val;
+            });
+            updateAC();
+        }
+
+        // --- MODALS & EXTRAS ---
+        function openRaceModal() { document.getElementById('raceModal').classList.add('active'); }
+
+        function addCustomRace() {
+            const name = document.getElementById('newRaceName').value; 
+            if(!name) return;
+            
+            const r = { 
+                str: parseInt(document.getElementById('nrStr').value)||0, 
+                dex: parseInt(document.getElementById('nrDex').value)||0, 
+                con: parseInt(document.getElementById('nrCon').value)||0, 
+                int: parseInt(document.getElementById('nrInt').value)||0, 
+                wis: parseInt(document.getElementById('nrWis').value)||0, 
+                cha: parseInt(document.getElementById('nrCha').value)||0, 
+                speed: document.getElementById('nrSpeed').value 
+            };
+            
+            racesDB[name] = r; 
+            updateRaceSelect(); 
+            document.getElementById('charRace').value = name; 
+            updateRaceStats(); 
+            closeModal('raceModal'); 
+            saveData();
+        }
+
+        function openClassModal() { document.getElementById('classModal').classList.add('active'); }
+
+        function addCustomClass() {
+            const name = document.getElementById('newClassName').value; 
+            const hd = document.getElementById('ncHD').value || "d8"; 
+            if(!name) return;
+            
+            classesDB[name] = { hd: hd }; 
+            renderClassRows(); // Update dropdowns in rows
+            closeModal('classModal'); 
+            saveData();
+        }
+
+        // --- FEAT EDITING ---
+        function openFeatModal() { 
+            editingFeatIndex = null;
+            document.getElementById('featModal').classList.add('active'); 
+            document.getElementById('nfName').value = '';
+            document.getElementById('nfType').value = 'Class Feat';
+            document.getElementById('nfDesc').value = '';
+        }
+
+        function editFeat(index) {
+            editingFeatIndex = index;
+            const f = feats[index];
+            document.getElementById('featModal').classList.add('active');
+            document.getElementById('nfName').value = f.t;
+            document.getElementById('nfType').value = f.type;
+            document.getElementById('nfDesc').value = f.d;
+        }
+
+        function addFeatFromModal() {
+            const title = document.getElementById('nfName').value; 
+            if(!title) return;
+            
+            const newFeat = { 
+                t: title, 
+                d: document.getElementById('nfDesc').value, 
+                type: document.getElementById('nfType').value 
+            };
+            
+            if (editingFeatIndex !== null) {
+                feats[editingFeatIndex] = newFeat;
+            } else {
+                feats.push(newFeat);
+            }
+            renderFeats(); 
+            closeModal('featModal'); 
+            saveData();
+        }
+
+        function renderFeats() {
+            const container = document.getElementById('classFeatsContainer'); 
+            container.innerHTML = '';
+            feats.forEach((f, idx) => {
+                const div = document.createElement('div'); 
+                div.className = 'feat-item';
+                div.innerHTML = `<div class="feat-header">
+                        <span><span class="feat-tag">${f.type}</span> ${f.t}</span>
+                        <div style="display:flex; align-items:center;">
+                            <i class="ph ph-caret-up btn-edit" style="margin-right:5px; cursor:pointer;" onclick="moveFeat(${idx}, -1)" title="Move Up"></i>
+                            <i class="ph ph-caret-down btn-edit" style="margin-right:10px; cursor:pointer;" onclick="moveFeat(${idx}, 1)" title="Move Down"></i>
+                            <i class="ph ph-pencil-simple btn-edit" style="margin-right:10px" onclick="editFeat(${idx})"></i>
+                            <i class="ph ph-trash btn-del" onclick="feats.splice(${idx},1); renderFeats(); saveData()"></i>
+                        </div>
+                    </div>
+                    <div class="feat-desc">${convertText(f.d)}</div>`;
+                container.appendChild(div);
+            });
+        }
+
+        function moveFeat(index, direction) {
+            const newIndex = index + direction;
+            // Check bounds
+            if (newIndex < 0 || newIndex >= feats.length) return;
+            
+            // Swap items
+            [feats[index], feats[newIndex]] = [feats[newIndex], feats[index]];
+            
+            renderFeats();
+            saveData();
+        }
+
+        // --- SPELL EDITING ---
+        function openSpellModal() { 
+            editingSpellIndex = null;
+            document.getElementById('spellModal').classList.add('active'); 
+            // Clear fields
+            document.getElementById('nsName').value = '';
+            document.getElementById('nsLevel').value = 0;
+            document.getElementById('nsSchool').value = '';
+            document.getElementById('nsTime').value = '1 Action';
+            document.getElementById('nsRange').value = '60 ft';
+            document.getElementById('nsDur').value = 'Instant';
+            document.getElementById('nsDmg').value = '';
+            document.getElementById('nsDesc').value = '';
+            document.getElementById('nsCompsList').innerHTML = '';
+            addSpellCompRow(); 
+        }
+
+        function editSpell(index, e) {
+            e.stopPropagation();
+            editingSpellIndex = index;
+            const s = spells[index];
+            document.getElementById('spellModal').classList.add('active');
+            
+            document.getElementById('nsName').value = s.n;
+            document.getElementById('nsLevel').value = s.lvl;
+            document.getElementById('nsSchool').value = s.sch;
+            document.getElementById('nsTime').value = s.time;
+            document.getElementById('nsRange').value = s.range;
+            document.getElementById('nsDur').value = s.dur;
+            document.getElementById('nsDmg').value = s.dmg;
+            document.getElementById('nsDesc').value = s.desc;
+            
+            // Handle components
+            document.getElementById('nsCompsList').innerHTML = '';
+            const compList = s.comps ? s.comps : (s.comp ? [s.comp] : []);
+            if(compList.length === 0) {
+                addSpellCompRow();
+            } else {
+                compList.forEach(c => addSpellCompRow(c));
+            }
+        }
+
+        function addSpellCompRow(val='') {
+            const div = document.createElement('div');
+            div.className = 'comp-row';
+            div.style.display = 'flex';
+            div.style.gap = '5px';
+            div.style.marginTop = '5px';
+            div.innerHTML = `
+                <input type="text" class="sheet-input comp-input" value="${val}" placeholder="e.g. Diamond (300) OR Orb">
+                <i class="ph ph-trash btn-del" style="padding-top:8px;" onclick="this.parentElement.remove()"></i>
+            `;
+            document.getElementById('nsCompsList').appendChild(div);
+        }
+
+        function addSpellFromModal() {
+            const name = document.getElementById('nsName').value; 
+            if(!name) return;
+            
+            const comps = Array.from(document.querySelectorAll('#nsCompsList .comp-input'))
+                                .map(i => i.value).filter(v => v.trim() !== "");
+            
+            const newSpell = { 
+                n: name, 
+                lvl: document.getElementById('nsLevel').value, 
+                sch: document.getElementById('nsSchool').value, 
+                time: document.getElementById('nsTime').value, 
+                range: document.getElementById('nsRange').value, 
+                dur: document.getElementById('nsDur').value, 
+                dmg: document.getElementById('nsDmg').value, 
+                comps: comps, 
+                desc: document.getElementById('nsDesc').value 
+            };
+            
+            if (editingSpellIndex !== null) {
+                spells[editingSpellIndex] = newSpell;
+            } else {
+                spells.push(newSpell);
+            }
+            
+            renderSpellbook(); 
+            closeModal('spellModal'); 
+            saveData();
+        }
+
+        function renderSpellbook() {
+            const container = document.getElementById('spellbookContainer'); 
+            container.innerHTML = '';
+            spells.sort((a,b) => a.lvl - b.lvl);
+            
+            spells.forEach((s, idx) => {
+                const div = document.createElement('div'); 
+                div.className = 'spell-card';
+                // Migrate old single comp to array if needed
+                const compList = s.comps ? s.comps : (s.comp ? [s.comp] : []);
+                
+                div.innerHTML = `<div class="spell-top">
+                        <strong style="color:var(--accent)">${s.n}</strong>
+                        <span class="spell-meta">Lvl ${s.lvl} ${s.sch}</span>
+                    </div>
+                    <div class="spell-top" style="margin-top:5px;">
+                        <span class="spell-meta">${convertText(s.time)} | ${convertText(s.range)}</span>
+                        <div style="display:flex; gap:5px;">
+                            ${compList.length > 0 ? `<button class="cast-btn" onclick="castSpell(${idx}, event)">Cast</button>` : ''}
+                            <div class="btn-edit" onclick="editSpell(${idx}, event)"><i class="ph ph-pencil-simple"></i></div>
+                            <i class="ph ph-trash btn-del" 
+                            onclick="spells.splice(${idx},1); renderSpellbook(); saveData(); event.stopPropagation()"></i>
+                        </div>
+                    </div>
+                    <div class="spell-details">
+                        <p><strong>Duration:</strong> ${convertText(s.dur)} | <strong>Effect:</strong> ${convertText(s.dmg)}</p>
+                        <p><strong>Components:</strong> ${compList.join(', ') || 'None'}</p>
+                        <p>${convertText(s.desc)}</p>
+                    </div>`;
+                
+                div.onclick = (e) => { 
+                    if(e.target.tagName !== 'BUTTON' && e.target.tagName !== 'I' && !e.target.classList.contains('btn-edit')) 
+                        div.querySelector('.spell-details').classList.toggle('open'); 
+                };
+                container.appendChild(div);
+            });
+        }
+
+        function castSpell(idx, e) {
+            e.stopPropagation();
+            const spell = spells[idx];
+            const rawComps = spell.comps ? spell.comps : (spell.comp ? [spell.comp] : []);
+            
+            // 1. Check for Equipped Focus
+            let hasFocus = false;
+            const armorIdx = document.getElementById('equippedArmor').value;
+            if(armorIdx !== "" && inventory[armorIdx] && inventory[armorIdx].isFocus) hasFocus = true;
+            
+            if(!hasFocus) {
+                document.querySelectorAll('.item-select').forEach(sel => {
+                    const val = sel.value;
+                    if(val !== "" && inventory[val] && inventory[val].isFocus) hasFocus = true;
+                });
+            }
+
+            let missing = [];
+            let tempUsed = {}; // Track usage during calculation to handle multiple requirements for same item
+
+            // Helper: Find first usable item index (accounting for temp usage)
+            const findValidItem = (name, minCost) => {
+                // Find all matching items in inventory
+                const candidates = inventory.map((item, i) => ({item, i}))
+                    .filter(x => x.item.n.toLowerCase() === name && (x.item.cost || 0) >= minCost);
+                
+                // Check if any candidate has remaining stock
+                for(const cand of candidates) {
+                    const alreadyUsed = tempUsed[cand.i] || 0;
+                    if(cand.item.q - alreadyUsed > 0) {
+                        return cand.i;
+                    }
+                }
+                return -1;
+            };
+
+            // Regex: Matches "Name" or "Name (Cost)"
+            const regex = /^([^(]+)(?:\s*\((\d+)\))?$/;
+
+            // 2. Parse and Check Components
+            for(let rawStr of rawComps) {
+                // Level 1: Split by " AND " (Requirement A AND Requirement B)
+                const andParts = rawStr.split(/\s+AND\s+/i);
+                
+                for(let requirement of andParts) {
+                    // Level 2: Split by " OR " (Option A OR Option B)
+                    const options = requirement.split(/\s+OR\s+/i);
+                    let requirementMet = false;
+
+                    for(let opt of options) {
+                        const match = opt.trim().match(regex);
+                        if(!match) continue;
+                        
+                        const compName = match[1].trim().toLowerCase();
+                        const minCost = match[2] ? parseInt(match[2]) : 0;
+
+                        // Option A: Covered by Focus? (Non-cost items only)
+                        if(hasFocus && minCost === 0) {
+                            requirementMet = true;
+                            break; // Stop checking OR options
+                        }
+
+                        // Option B: Consumable Item Found?
+                        const foundIdx = findValidItem(compName, minCost);
+                        if(foundIdx !== -1) {
+                            // Mark 1 as used in our temp tracker
+                            tempUsed[foundIdx] = (tempUsed[foundIdx] || 0) + 1;
+                            requirementMet = true;
+                            break; // Stop checking OR options
+                        }
+                    }
+
+                    if(!requirementMet) {
+                        missing.push(requirement.trim());
+                    }
+                }
+            }
+
+            // 3. Execution
+            if(missing.length > 0) {
+                let errorMsg = `Cannot cast ${spell.n}. Missing: ${missing.join(', ')}`;
+                if(!hasFocus && missing.some(m => !m.match(/\(\d+\)/))) {
+                    errorMsg += "\n\n(Tip: Equip a Spellcasting Focus to ignore non-cost components)";
+                }
+                showPopup(errorMsg);
+            } else {
+                // Commit the usage
+                let msg = `Cast ${spell.n}!`;
+                const usedIndices = Object.keys(tempUsed);
+                
+                if(usedIndices.length > 0) {
+                    msg += " Consumed:";
+                    usedIndices.forEach(idx => {
+                        const amount = tempUsed[idx];
+                        inventory[idx].q -= amount;
+                        msg += `\n- ${amount} ${inventory[idx].n} (Remaining: ${inventory[idx].q})`;
+                    });
+                } else if (hasFocus && rawComps.length > 0) {
+                    msg += "\n(Components provided by Spellcasting Focus)";
+                }
+                
+                showPopup(msg);
+                renderInventory();
+                saveData();
+            }
+        }
+
+        // --- IO & GENERIC ---
+        async function exportJSON() {
+            saveData();
+            const dataStr = localStorage.getItem('titan_dnd5e_sheet');
+            if(!dataStr) { showPopup("No data to export"); return; }
+            
+            const data = JSON.parse(dataStr);
+            
+            // Fetch images back from DB for the export file
+            if (data.avatar && data.avatar.startsWith('DB:')) {
+                const dbAvatar = await DB.get(data.avatar.split(':')[1]);
+                if (dbAvatar) data.avatar = dbAvatar;
+            }
+            if (data.statImages) {
+                for (let img of data.statImages) {
+                    if (img.src && img.src.startsWith('DB:')) {
+                        const dbSrc = await DB.get(img.src.split(':')[1]);
+                        if (dbSrc) img.src = dbSrc;
+                    }
+                }
+            }
+            
+            const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); 
+            a.href = url; 
+            a.download = `character_${document.getElementById('charName').value || 'sheet'}.json`;
+            a.click();
+        }
+
+        function importJSON(input) {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // Strip heavy images into the database before putting in LocalStorage
+                    if (data.avatar && data.avatar.startsWith('data:image') && data.avatar.length > 1000) {
+                        await DB.save('avatarImg', data.avatar);
+                        data.avatar = 'DB:avatarImg';
+                    }
+                    if (data.statImages) {
+                        for (let i = 0; i < data.statImages.length; i++) {
+                            let img = data.statImages[i];
+                            if (img.src && img.src.startsWith('data:image')) {
+                                await DB.save(`statImg_${i}`, img.src);
+                                img.src = `DB:statImg_${i}`;
+                            }
+                        }
+                    }
+                    
+                    localStorage.setItem('titan_dnd5e_sheet', JSON.stringify(data));
+                    location.reload();
+                } catch(err) { showPopup("Invalid JSON file"); }
+            };
+            reader.readAsText(file);
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            const map = { 'stats':0, 'combat':1, 'class':2, 'spells':3, 'gear':4, 'char':5 };
+            const buttons = document.querySelectorAll('.nav-btn');
+            if(buttons[map[tabId]]) buttons[map[tabId]].classList.add('active');
+        }
+
+        function toggleProf(id, allowExpertise) {
+            const el = document.getElementById(id);
+            if (allowExpertise) {
+                if (el.classList.contains('expertise')) { el.classList.remove('active', 'expertise'); el.innerText = ''; }
+                else if (el.classList.contains('active')) { el.classList.add('expertise'); el.innerText = 'E'; }
+                else { el.classList.add('active'); }
+            } else { el.classList.toggle('active'); }
+            updateSheet();
+        }
+
+        function togglePip(el) { el.classList.toggle('used'); saveData(); }
+
+        function modHP(amount) { 
+            document.getElementById('hpCurr').value = (parseInt(document.getElementById('hpCurr').value)||0) + amount; 
+            saveData(); 
+        }
+
+        function restHP() { 
+            document.getElementById('hpCurr').value = document.getElementById('hpMax').value;
+            resetSlots(); // Also reset spell slots
+            showPopup("Short Rest taken. HP restored to max.");
+            saveData(); 
+        }
+
+        function addAttack(name='', bonus='', dmg='', selIndex='', dmgBonus='') {
+            const container = document.getElementById('attacksContainer');
+            const div = document.createElement('div'); div.className = 'attack-row';
+            let options = '<option value="">- Custom -</option>';
+            inventory.forEach((item, index) => { 
+                if(item.cat === 'Weapon') options += `<option value="${index}">${item.n}</option>`; 
+            });
+            
+            // Added atk-dmg-bonus input and Fire Button
+            div.innerHTML = `
+                <select class="sheet-select item-select" onchange="fillAttack(this)" 
+                        style="font-size:0.8rem; color:var(--accent);">${options}</select>
+                <input type="text" placeholder="Name" class="sheet-input atk-name" value="${name}" oninput="saveData()">
+                <input type="text" placeholder="+Atk" class="sheet-input atk-bonus" value="${bonus}" 
+                    style="text-align:center" oninput="saveData()">
+                <input type="text" placeholder="Dmg" class="sheet-input atk-dmg" value="${dmg}" oninput="saveData()">
+                <input type="text" placeholder="+0" class="sheet-input atk-dmg-bonus" value="${dmgBonus}" 
+                    style="text-align:center; font-size:0.8rem; color:var(--accent)" oninput="saveData()" title="Damage Bonus">
+                <button class="btn-fire" onclick="fireAmmo(this)" title="Use Ammo"><i class="ph ph-crosshair"></i></button>
+                <i class="ph ph-trash btn-del" onclick="this.parentElement.remove(); saveData()"></i>
+            `;
+            
+            // Restore selection if passed
+            if(selIndex !== "" && selIndex !== undefined) {
+                const sel = div.querySelector('.item-select');
+                sel.value = selIndex;
+                // Ensure Fire button state is correct on load
+                fillAttack(sel, true);
+            }
+
+            container.appendChild(div); saveData();
+        }
+
+        function fillAttack(select, skipSave = false) {
+            const idx = select.value; 
+            const row = select.parentElement;
+            const fireBtn = row.querySelector('.btn-fire');
+            
+            if (idx === "") {
+                fireBtn.classList.remove('visible');
+                return; 
+            }
+            
+            const item = inventory[idx];
+            
+            // If it's a fresh selection (not loading from save), populate fields
+            if(!skipSave) {
+                row.querySelector('.atk-name').value = item.n; 
+                row.querySelector('.atk-dmg').value = item.dmg || "";
+                const mods = updateSheet(); 
+                const lvl = parseInt(document.getElementById('charLevel').value) || 1; 
+                const prof = Math.ceil(lvl / 4) + 1;
+                let statMod = mods.Str; 
+                if (item.finesse && mods.Dex > mods.Str) statMod = mods.Dex;
+                // Ranged weapons usually use Dex
+                if (item.ranged) statMod = mods.Dex;
+                
+                let totalBonus = statMod;
+                if (item.prof) totalBonus += prof;
+
+                row.querySelector('.atk-bonus').value = formatBonus(totalBonus); 
+                saveData();
+            }
+            
+            // Check for linked ammo
+            if (item.ranged && item.ammo) {
+                fireBtn.classList.add('visible');
+                fireBtn.setAttribute('data-ammo', item.ammo);
+            } else {
+                fireBtn.classList.remove('visible');
+            }
+        }
+
+        function fireAmmo(btn) {
+            const ammoName = btn.getAttribute('data-ammo');
+            if(!ammoName) return;
+            
+            const ammoItem = inventory.find(i => i.n === ammoName);
+            if(ammoItem) {
+                if(ammoItem.q > 0) {
+                    ammoItem.q--;
+                    renderInventory();
+                    showPopup(`Used 1 ${ammoName}. Remaining: ${ammoItem.q}`);
+                    saveData();
+                } else {
+                    showPopup(`Out of ${ammoName}!`);
+                }
+            } else {
+                showPopup(`Ammo item "${ammoName}" not found in inventory.`);
+            }
+        }
+
+        function resetSlots() { 
+            // Reset Standard Pips
+            document.querySelectorAll('.pip.used').forEach(p => p.classList.remove('used')); 
+            
+            // NEW: Reset Special Points
+            const spMax = document.getElementById('spMax');
+            const spCurr = document.getElementById('spCurr');
+            if(spMax && spCurr) {
+                spCurr.value = spMax.value;
+            }
+
+            saveData(); 
+        }
+
+        function loadAvatar(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) { 
+                    document.getElementById('avatarImg').src = e.target.result; 
+                    saveData(); 
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function updateRaceSelect() {
+            const raceSel = document.getElementById('charRace'); 
+            const current = raceSel.value;
+            raceSel.innerHTML = '<option value="">- Select -</option>';
+            Object.keys(racesDB).forEach(r => { 
+                const opt = document.createElement('option'); opt.value = r; opt.innerText = r; raceSel.appendChild(opt); 
+            });
+            if(current) raceSel.value = current;
+        }
+
+        // --- STAT BLOCKS / IMAGES LOGIC ---
+        function addStatBlock(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Default size
+                    statImages.push({ 
+                        src: e.target.result, 
+                        w: '300px', 
+                        h: 'auto' 
+                    });
+                    renderStatImages();
+                    saveData();
+                    input.value = ''; // Reset input
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function renderStatImages() {
+            const container = document.getElementById('statBlocksContainer');
+            container.innerHTML = '';
+
+            statImages.forEach((imgData, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'stat-block-wrapper';
+                // Apply saved dimensions
+                wrapper.style.width = imgData.w;
+                wrapper.style.height = imgData.h;
+
+                wrapper.innerHTML = `
+                    <div class="stat-block-del" onclick="deleteStatImage(${idx})"><i class="ph ph-x"></i></div>
+                    <img src="${imgData.src}" class="stat-block-img">
+                `;
+
+                container.appendChild(wrapper);
+
+                // Observe resizing to save dimensions
+                const observer = new ResizeObserver(entries => {
+                    for (let entry of entries) {
+                        // Update state array with new dimensions
+                        statImages[idx].w = entry.target.style.width;
+                        statImages[idx].h = entry.target.style.height;
+                    }
+                });
+                observer.observe(wrapper);
+                
+                // Trigger save on mouseup (end of resize interaction)
+                wrapper.addEventListener('mouseup', saveData);
+            });
+        }
+
+        function deleteStatImage(idx) {
+            showConfirm("Delete this image?", () => {
+                statImages.splice(idx, 1);
+                renderStatImages();
+                saveData();
+            });
+        }
+        
+        // --- PDF EXPORT ---
+        async function fillPDF(input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            const arrayBuffer = await file.arrayBuffer();
+
+            try {
+                const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+                const form = pdfDoc.getForm();
+                
+                // 1. EMBED FONT
+                const helvetica = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+                // 2. TEXT SANITIZER
+                const cleanText = (val) => {
+                    if (val === null || val === undefined) return "";
+                    return String(val)
+                        // Remove the Tags for PDF (Clean view)
+                        .replace(/<r>/g, "")    // Remove <r>
+                        .replace(/<\/r>/g, "")  // Remove </r>
+                        .replace(/\*\*/g, "")   // Remove ** (Bold markers)
+                        .replace(/\uf0b7/g, "- ") 
+                        .replace(/\u2022/g, "- ")
+                        .replace(/\u2023/g, "- ")
+                        .replace(//g, "- ")      
+                        .replace(/\r\n/g, "\n")
+                        .replace(/\r/g, "\n");
+                };
+
+                // 3. SMART FIELD HELPER (Context-Aware Shrinking)
+                const fill = (baseName, val, defaultSize = 10, isLargeBox = false) => {
+                    const strVal = cleanText(val);
+                    
+                    const candidates = [
+                        baseName, 
+                        baseName + " ",                 
+                        baseName.replace(" 2", "  2"),  
+                        baseName.replace(" ", "  "),    
+                        `ST ${baseName}`,               
+                        baseName.replace(' ', ''),      
+                        baseName.replace(' ', '_'),     
+                        baseName.toUpperCase(),         
+                        `Skill ${baseName}`,
+                        `${baseName}Save`,
+                        baseName === "Allies" ? "Allies & Organizations" : null,
+                        baseName === "AdditionalFeatures" ? "ADDITIONAL FEATURES & TRAITS" : null
+                    ].filter(Boolean);
+                    
+                    for (const name of candidates) {
+                        try {
+                            const field = form.getTextField(name);
+                            if (field) { 
+                                field.updateAppearances(helvetica);
+                                field.setText(strVal); 
+
+                                // --- AUTO-SHRINK LOGIC ---
+                                try {
+                                    if (field.isMultiline()) {
+                                        const len = strVal.length;
+                                        let size = defaultSize;
+
+                                        if (isLargeBox) {
+                                            // LOGIC FOR LARGE BOXES (Features, Backstory)
+                                            if (len > 3000) size = 6;
+                                            else if (len > 2200) size = 7;
+                                            else if (len > 1500) size = 8;
+                                            else if (len > 850) size = 9;
+                                        } else {
+                                            // LOGIC FOR SMALL BOXES (Ideals, Bonds, Flaws)
+                                            if (len > 350) size = 5;
+                                            else if (len > 250) size = 6;
+                                            else if (len > 140) size = 7;
+                                            else if (len > 110) size = 8;
+                                            else if (len > 70) size = 9;
+                                        }
+                                        field.setFontSize(size);
+
+                                    } else {
+                                        // SINGLE LINE (Names, Stats)
+                                        const widgets = field.getWidgets();
+                                        if (widgets.length > 0) {
+                                            const rect = widgets[0].getRectangle();
+                                            const availableWidth = rect.width - 25; 
+                                            const textWidth = helvetica.widthOfTextAtSize(strVal, defaultSize);
+
+                                            if (textWidth > availableWidth) {
+                                                let newSize = (availableWidth / textWidth) * defaultSize;
+                                                newSize = Math.max(Math.floor(newSize * 10) / 10, 6);
+                                                field.setFontSize(newSize);
+                                            } else {
+                                                field.setFontSize(defaultSize);
+                                            }
+                                        } else {
+                                            field.setFontSize(defaultSize);
+                                        }
+                                    }
+                                } catch (calcErr) {
+                                    field.setFontSize(defaultSize);
+                                }
+                                return; 
+                            }
+                        } catch (e) {}
+                    }
+                };
+
+                const check = (baseName) => {
+                    const candidates = [
+                        baseName, baseName.replace('Check Box', 'CheckBox'), 
+                        baseName.replace(' ', ''), baseName.replace(/ /g, '_')
+                    ];
+                    for (const name of candidates) {
+                        try {
+                            const field = form.getCheckBox(name);
+                            if (field) { field.check(); return; }
+                        } catch (e) {}
+                    }
+                };
+
+                // 4. CORE INFO
+                fill('CharacterName', document.getElementById('charName').value, 16); 
+                fill('CharacterName 2', document.getElementById('charName').value);
+                fill('PlayerName', document.getElementById('charName').value);
+                fill('Race ', document.getElementById('charRace').value);
+                fill('Background', document.getElementById('charBackground').value);
+                fill('XP', document.getElementById('charXP').value);
+                fill('Inspiration', inspiration ? "1" : "");
+                
+                let classStr = charClasses.map(c => `${c.name} ${c.level}`).join(' / ');
+                fill('ClassLevel', classStr);
+
+                // 5. ATTRIBUTES & SAVES
+                const stats = ['Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha'];
+                const pdfStatNames = ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'];
+                const fullStatNames = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma'];
+                const saveBoxMap = { 'Str':'Check Box 11', 'Dex':'Check Box 18', 'Con':'Check Box 19', 'Int':'Check Box 20', 'Wis':'Check Box 21', 'Cha':'Check Box 22' };
+
+                stats.forEach((stat, i) => {
+                    let score = parseInt(document.getElementById(`attr${stat}`).value) || 10;
+                    const raceText = document.getElementById(`raceMod${stat}`).innerText;
+                    if(raceText) score += parseInt(raceText.replace('+',''));
+                    fill(pdfStatNames[i], score, 16); 
+                    
+                    const mod = Math.floor((score - 10) / 2);
+                    const modStr = mod >= 0 ? `+${mod}` : mod;
+                    if (stat === 'Cha') { fill('CHamod', modStr, 12); fill('CHAmod', modStr, 12); } 
+                    else { fill(`${pdfStatNames[i]}mod`, modStr, 12); }
+
+                    fill(`ST ${fullStatNames[i]}`, document.getElementById(`saveVal_${stat}`).innerText, 10); 
+                    if(document.getElementById(`saveProf_${stat}`).classList.contains('active')) check(saveBoxMap[stat]);
+                });
+
+                // 6. SKILLS
+                const skillNames = ['Acrobatics', 'Animal', 'Arcana', 'Athletics', 'Deception', 'History', 'Insight', 'Intimidation', 'Investigation', 'Medicine', 'Nature', 'Perception', 'Performance', 'Persuasion', 'Religion', 'Sleight of Hand', 'Stealth', 'Survival'];
+                skillsData.forEach((skill, i) => {
+                    fill(skillNames[i], document.getElementById(`skillVal_${i}`).innerText, 10);
+                    if(document.getElementById(`skillProf_${i}`).classList.contains('active')) check(`Check Box ${23 + i}`);
+                });
+
+                // 7. COMBAT
+                fill('AC', document.getElementById('valAC').value, 18);
+                fill('Initiative', document.getElementById('dispInit').innerText, 18);
+                fill('Speed', document.getElementById('dispSpeed').innerText.replace(/[^0-9]/g, ''), 14);
+                fill('HPMax', document.getElementById('hpMax').value, 12);
+                fill('HPCurrent', document.getElementById('hpCurr').value, 12);
+                fill('HDTotal', document.getElementById('totalLevelDisplay').innerText, 10);
+                fill('HD', document.getElementById('hitDice').value, 10);
+                fill('ProfBonus', document.getElementById('dispProf').innerText, 12);
+                fill('Passive', document.getElementById('dispPassivePerc').innerText, 12);
+                
+                fill('GP', document.getElementById('currGP').value, 10);
+                fill('SP', document.getElementById('currSP').value, 10);
+                fill('CP', document.getElementById('currCP').value, 10);
+
+                // 8. BIO & LISTS
+                fill('PersonalityTraits ', document.getElementById('bioPersonality').value, 10);
+                fill('Ideals', document.getElementById('bioIdeals').value, 10);
+                fill('Bonds', document.getElementById('bioBonds').value, 10);
+                fill('Flaws', document.getElementById('bioFlaws').value, 10);
+                
+                // Large Boxes
+                fill('Backstory', document.getElementById('bioNotes').value, 10, true);
+                fill('Allies', document.getElementById('bioAllies').value, 10, true); 
+                
+                fill('Age', document.getElementById('bioAge').value, 10);
+                fill('Height', document.getElementById('bioHeight').value, 10);
+                fill('Weight', document.getElementById('bioWeight').value, 10);
+                fill('Eyes', document.getElementById('bioEyes').value, 10);
+                fill('Skin', document.getElementById('bioSkin').value, 10);
+                fill('Hair', document.getElementById('bioHair').value, 10);
+
+                let profText = "LANGUAGES:\n" + document.getElementById('bioLanguages').value + "\n\nTOOLS:\n" + tools.join(', ');
+                fill('ProficienciesLang', profText, 9, true); 
+                
+                // --- 9. FEAT SPLITTER (Titles Only) ---
+                let mainFeatText = "";
+                let additionalFeatText = "";
+                const MAX_MAIN_CHARS = 1800; // Capacity of Page 1 Box
+
+                for (let f of feats) {
+                    let entry = `- ${f.t}\n`; // TITLE ONLY
+                    
+                    if ((mainFeatText.length + entry.length) < MAX_MAIN_CHARS) {
+                        mainFeatText += entry;
+                    } else {
+                        additionalFeatText += entry;
+                    }
+                }
+                
+                fill('Features and Traits', mainFeatText, 9, true);
+                fill('AdditionalFeatures', additionalFeatText, 10, true); 
+                fill('ADDITIONAL FEATURES & TRAITS', additionalFeatText, 10, true);
+                
+                let equipText = ""; inventory.forEach(i => equipText += `- ${i.n} (x${i.q})\n`);
+                fill('Equipment', equipText, 8, true);
+
+                // 10. ATTACKS
+                const attacks = document.querySelectorAll('.attack-row');
+                for(let i=0; i<3; i++) {
+                    if(attacks[i]) {
+                        const name = attacks[i].querySelector('.atk-name').value;
+                        const bonus = attacks[i].querySelector('.atk-bonus').value;
+                        const dmg = attacks[i].querySelector('.atk-dmg').value;
+                        
+                        fill(i===0 ? 'Wpn Name' : `Wpn Name ${i+1}`, name, 10);
+                        fill(`Wpn${i+1} AtkBonus`, bonus, 10);
+                        fill(`Wpn${i+1} Damage`, dmg, 10);
+                    }
+                }
+
+                // 11. SPELLS
+                fill('SpellcastingAbility 2', document.getElementById('spellAbility').value.toUpperCase(), 12);
+                fill('SpellSaveDC 2', document.getElementById('spellDC').value, 12);
+                fill('SpellAtkBonus 2', document.getElementById('spellAtk').value, 12);
+                fill('Spellcasting Class 2', charClasses[0] ? charClasses[0].name : "", 12);
+
+                for(let i=1; i<=9; i++) {
+                    fill(`SlotsTotal ${18 + i}`, document.getElementById(`slotMax_${i}`).value, 10); 
+                }
+
+                const getSpellIDs = (lvl) => {
+                    const ids = [];
+                    if (lvl === 0) {
+                        ids.push(1014); ids.push(1016); 
+                        for(let k=1017; k<=1022; k++) ids.push(k);
+                    } else if (lvl === 1) {
+                        ids.push(1015); 
+                        for(let k=1023; k<=1033; k++) ids.push(k);
+                    } else if (lvl === 2) {
+                        ids.push(1046); 
+                        for(let k=1034; k<=1045; k++) ids.push(k);
+                    } else if (lvl === 3) {
+                        ids.push(1048); ids.push(1047); 
+                        for(let k=1049; k<=1059; k++) ids.push(k);
+                    } else if (lvl === 4) {
+                        ids.push(1061); ids.push(1060); 
+                        for(let k=1062; k<=1072; k++) ids.push(k);
+                    } else {
+                        let prevLast = 1072;
+                        if(lvl > 5) {
+                            const endPoints = {5: 1081, 6: 1090, 7: 1099, 8: 1106};
+                            prevLast = endPoints[lvl-1];
+                        }
+                        const first = prevLast + 2;
+                        ids.push(first); ids.push(first - 1); ids.push(first + 1); 
+                        for(let k=1; k<=6; k++) ids.push(first + 1 + k);
+                    }
+                    return ids;
+                };
+
+                spells.sort((a,b) => a.lvl - b.lvl);
+                const spellsByLevel = {};
+                spells.forEach(s => {
+                    if(!spellsByLevel[s.lvl]) spellsByLevel[s.lvl] = [];
+                    spellsByLevel[s.lvl].push(s);
+                });
+
+                for (const [lvlStr, spellList] of Object.entries(spellsByLevel)) {
+                    const lvl = parseInt(lvlStr);
+                    const idList = getSpellIDs(lvl);
+                    
+                    spellList.forEach((s, index) => {
+                        if(index < idList.length) {
+                            fill(`Spells ${idList[index]}`, s.n, 10);
+                        }
+                    });
+                }
+
+                // 12. SAVE
+                const pdfBytes = await pdfDoc.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `exported_${document.getElementById('charName').value || 'char'}.pdf`;
+                link.click();
+                
+                showPopup("PDF Exported Successfully!");
+
+            } catch (err) {
+                console.error(err);
+                showPopup("Export Failed. See console for details.");
+            }
+            input.value = '';
+        }
+
+        function saveData() {
+            const data = {};
+            document.querySelectorAll('input, textarea, select').forEach(el => {
+                if (el.id && !el.id.startsWith('new') && !el.id.startsWith('nr') && !el.id.startsWith('nf') 
+                    && !el.id.startsWith('ns') && !el.id.startsWith('nc') && !el.id.startsWith('nt') 
+                    && !el.classList.contains('atk-name') && el.type !== 'file' && !el.classList.contains('comp-input') 
+                    && !el.classList.contains('journal-title-input')) {
+                    data[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+                }
+            });
+            
+            data.charClasses = charClasses; 
+            data.journal = journal; 
+            // Offload heavy images to DB, save references to LocalStorage
+            data.statImages = statImages.map((img, i) => {
+                if (img.src && img.src.startsWith('data:image')) {
+                    DB.save(`statImg_${i}`, img.src); // Saves in background
+                    return { ...img, src: `DB:statImg_${i}` };
+                }
+                return img;
+            });
+
+            const avatarSrc = document.getElementById('avatarImg').src;
+            if (avatarSrc.startsWith('data:image') && avatarSrc.length > 1000) {
+                DB.save('avatarImg', avatarSrc); // Saves in background
+                data.avatar = 'DB:avatarImg';
+            } else {
+                data.avatar = avatarSrc;
+            }
+            
+            data.proficiencies = {}; 
+            document.querySelectorAll('.skill-prof').forEach(el => { 
+                data.proficiencies[el.id] = { 
+                    active: el.classList.contains('active'), 
+                    expertise: el.classList.contains('expertise') 
+                }; 
+            });
+            
+            // Save Disadvantage State
+            data.disadvantages = {};
+            document.querySelectorAll('.skill-dis').forEach(el => {
+                if(el.classList.contains('active')) data.disadvantages[el.id] = true;
+            });
+
+            data.pips = {}; 
+            for(let i=1; i<=9; i++) { 
+                const c = document.getElementById(`pips_${i}`); 
+                if(c) data.pips[`slot_${i}`] = Array.from(c.children).filter(x => x.classList.contains('used')).length; 
+            }
+            
+            const dsSuccess = document.getElementById('dsSuccessPips'); 
+            const dsFail = document.getElementById('dsFailPips');
+            if(dsSuccess) data.dsSuccess = Array.from(dsSuccess.children).filter(x => x.classList.contains('used')).length;
+            if(dsFail) data.dsFail = Array.from(dsFail.children).filter(x => x.classList.contains('used')).length;
+            
+            data.inventory = inventory; 
+            data.itemCategories = itemCategories; 
+            data.racesDB = racesDB; 
+            data.classesDB = classesDB; 
+            data.feats = feats; 
+            data.spells = spells; 
+            data.tools = tools;
+            
+            // Save Attacks with new bonus field
+            data.attacks = []; 
+            document.querySelectorAll('.attack-row').forEach(row => { 
+                data.attacks.push({ 
+                    n: row.querySelector('.atk-name').value, 
+                    a: row.querySelector('.atk-bonus').value, 
+                    d: row.querySelector('.atk-dmg').value, 
+                    sel: row.querySelector('.item-select').value,
+                    db: row.querySelector('.atk-dmg-bonus').value 
+                }); 
+            });
+            
+            data.inspiration = inspiration;
+            localStorage.setItem('titan_dnd5e_sheet', JSON.stringify(data));
+        }
+
+        async function loadData() {
+            const json = localStorage.getItem('titan_dnd5e_sheet'); if(!json) return;
+            const data = JSON.parse(json);
+            if(data.racesDB) racesDB = data.racesDB; if(data.classesDB) classesDB = data.classesDB;
+            
+            updateRaceSelect();
+            const savedArmorVal = data.equippedArmor || "";
+
+            for (const [key, value] of Object.entries(data)) {
+                const el = document.getElementById(key);
+                if (el && !['inventory','itemCategories','attacks','feats','spells','proficiencies','pips','racesDB','classesDB',
+                    'avatar','tools', 'charClasses', 'journal', 'statImages'].includes(key)) {
+                    el.type === 'checkbox' ? el.checked = value : el.value = value;
+                }
+            }
+            
+            if(data.charClasses && Array.isArray(data.charClasses)) charClasses = data.charClasses; 
+            else if(data.charClass) charClasses = [{name: data.charClass, level: data.charLevel || 1}];
+            
+            if(data.journal && Array.isArray(data.journal)) {
+                journal = data.journal;
+                renderJournal();
+            }
+            
+            // ASYNC IMAGE REHYDRATION
+            if (data.statImages && Array.isArray(data.statImages)) {
+                statImages = data.statImages;
+                for (let img of statImages) {
+                    if (img.src && img.src.startsWith('DB:')) {
+                        const dbSrc = await DB.get(img.src.split(':')[1]);
+                        if (dbSrc) img.src = dbSrc;
+                    }
+                }
+                renderStatImages();
+            }
+            
+            if (data.avatar) {
+                if (data.avatar.startsWith('DB:')) {
+                    const dbAvatar = await DB.get(data.avatar.split(':')[1]);
+                    if (dbAvatar) document.getElementById('avatarImg').src = dbAvatar;
+                } else if (data.avatar.length > 100) {
+                    document.getElementById('avatarImg').src = data.avatar;
+                }
+            }
+
+            if (data.proficiencies) { 
+                for (const [key, state] of Object.entries(data.proficiencies)) { 
+                    const el = document.getElementById(key); 
+                    if (el) { 
+                        if (state.active) el.classList.add('active'); 
+                        if (state.expertise) { el.classList.add('expertise'); el.innerText = 'E'; } 
+                    } 
+                } 
+            }
+            
+            if (data.disadvantages) {
+                for(const [id, active] of Object.entries(data.disadvantages)) {
+                    const el = document.getElementById(id);
+                    if(el && active) el.classList.add('active');
+                }
+            }
+
+            if (data.itemCategories) { itemCategories = data.itemCategories; updateCatSelect(); }
+            if (data.inventory) { 
+                inventory = data.inventory; 
+                renderInventory(); 
+                updateCombatOptions();
+                if (savedArmorVal !== "") {
+                    const armorEl = document.getElementById('equippedArmor');
+                    if (armorEl) armorEl.value = savedArmorVal;
+                }
+            }
+            if (data.feats) { feats = data.feats; renderFeats(); }
+            if (data.spells) { spells = data.spells; renderSpellbook(); }
+            if (data.tools) { tools = data.tools; renderTools(); }
+            
+            if (data.attacks) { 
+                document.getElementById('attacksContainer').innerHTML = ''; 
+                data.attacks.forEach(atk => addAttack(atk.n, atk.a, atk.d, atk.sel, atk.db)); 
+            }
+            
+            for(let i=1; i<=9; i++) { 
+                renderPips(i); 
+                const count = data.pips ? (data.pips[`slot_${i}`] || 0) : 0; 
+                const c = document.getElementById(`pips_${i}`); 
+                if(c) { for(let j=0; j<count; j++) if(c.children[j]) c.children[j].classList.add('used'); } 
+            }
+            
+            const dsSuccess = document.getElementById('dsSuccessPips'); 
+            const dsFail = document.getElementById('dsFailPips');
+            if(data.dsSuccess && dsSuccess) 
+                for(let i=0; i<data.dsSuccess; i++) if(dsSuccess.children[i]) dsSuccess.children[i].classList.add('used');
+            if(data.dsFail && dsFail) 
+                for(let i=0; i<data.dsFail; i++) if(dsFail.children[i]) dsFail.children[i].classList.add('used');
+            
+            useMetric = document.getElementById('unitToggle').checked;
+            inspiration = data.inspiration || false;
+            if(inspiration) document.getElementById('inspirationToggle').classList.add('active');
+            
+            updateRaceStats();
+            updateSheet();
+        }
+
+        function resetData() { 
+            showConfirm("Delete all data?", async () => { 
+                await DB.clear(); // Clear the IndexedDB images
+                localStorage.removeItem('titan_dnd5e_sheet');
+                
+                // 1. Reset Internal State
+                inventory = []; 
+                feats = []; 
+                spells = []; 
+                tools = []; 
+                charClasses = [{name: '', level: 1}];
+                journal = [];
+                statImages = [];
+                inspiration = false;
+                
+                // 2. Reset Custom Definitions (Fixes "Custom Race Persists" bug)
+                racesDB = getInitialRaces();
+                classesDB = getInitialClasses();
+
+                // 3. Reset Inputs (Comprehensive List)
+                const defaults = {
+                    'charName': '', 'charBackground': '', 'charSubclass': '', 'charXP': 0, 'charRace': '',
+                    'attrStr': 10, 'attrDex': 10, 'attrCon': 10, 'attrInt': 10, 'attrWis': 10, 'attrCha': 10,
+                    'valAC': 10, 'valInitMisc': 0, 'hpCurr': 10, 'hpMax': 10, 'hitDice': '',
+                    'combatNotes': '', 'currGP': '', 'currSP': '', 'currCP': '',
+                    'bioAge': '', 'bioHeight': '', 'bioWeight': '', 'bioEyes': '', 'bioSkin': '', 'bioHair': '',
+                    'bioPersonality': '', 'bioIdeals': '', 'bioBonds': '', 'bioFlaws': '', 
+                    'bioLanguages': '', 'bioAllies': '', 'bioNotes': '',
+                    'spellAbility': 'int', 'equippedArmor': '', 'acSecStat': '', 
+                    'spCurr': 0, 'spMax': 0, 'acMisc': 0
+                };
+                
+                for(const [id, val] of Object.entries(defaults)) {
+                    const el = document.getElementById(id);
+                    if(el) el.value = val;
+                }
+                
+                // 4. Reset Checkboxes
+                document.getElementById('unitToggle').checked = false;
+                
+                // 5. Clear Visual Elements (Proficiencies, Pips, Containers)
+                document.querySelectorAll('.skill-prof').forEach(el => {
+                    el.classList.remove('active', 'expertise');
+                    el.innerText = '';
+                });
+
+                // FIXED: Reset Skill Modifiers
+                document.querySelectorAll('.skill-bonus-input').forEach(el => el.value = '');
+                // FIXED: Reset Skill Disadvantages
+                document.querySelectorAll('.skill-dis').forEach(el => el.classList.remove('active'));
+
+                document.querySelectorAll('.pip').forEach(el => el.classList.remove('used'));
+                
+                // FIXED: Reset Spell Slots
+                for(let i=1; i<=9; i++) {
+                    document.getElementById(`slotMax_${i}`).value = 0;
+                }
+
+                document.getElementById('attacksContainer').innerHTML = '';
+                document.getElementById('journalContainer').innerHTML = '';
+                document.getElementById('statBlocksContainer').innerHTML = '';
+                document.getElementById('inspirationToggle').classList.remove('active');
+                
+                // 6. Reset Avatar
+                document.getElementById('avatarImg').src = 
+                    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNWM0MDMzIiBzdHJva2Utd2lkdGg9IjEiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8+PHBhdGggZD0iTTEyIDhhNCA0IDAgMSAwIDAgOCA0IDQgMCAwIDAgMCAwLTh6Ii8+PHBhdGggZD0iTTE2IDE2YzAgMS41LTEuNSAzLTMgM3MtMy0xLjUtMy0zIi8+PC9zdmc+";
+
+                // 7. Re-render UI to reflect empty state
+                updateRaceSelect(); 
+                renderClassRows();  
+                renderInventory();
+                renderFeats();
+                renderSpellbook();
+                renderTools();
+                renderJournal();
+                toggleUnits(); 
+                updateSheet();
+                updateXP();
+                
+                showPopup("Sheet reset.");
+            }); 
+        }
+        //PASTE HANDLER
+        document.addEventListener('paste', function(e) {
+            // Only run this on text inputs or textareas
+            if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text')) {
+                e.preventDefault(); // Stop the default messy paste
+                
+                // Get text from clipboard
+                let text = (e.clipboardData || window.clipboardData).getData('text');
+                
+                if (!text) return;
+
+                // 1. Convert Word/Weird Bullets to New Lines + Dash
+                text = text
+                    .replace(/\uf0b7/g, "\n- ") // The specific "weird" character (0xf0b7)
+                    .replace(//g, "\n- ")      // Same character, different encoding
+                    .replace(/\u2022/g, "\n- ") // Standard Bullet (•)
+                    .replace(/\u2023/g, "\n- ") // Triangle Bullet (‣)
+
+                // 2. Insert text cleanly at cursor position
+                const el = e.target;
+                const start = el.selectionStart;
+                const end = el.selectionEnd;
+                const val = el.value;
+                
+                // Combine: Text Before Cursor + Cleaned Paste + Text After Cursor
+                el.value = val.slice(0, start) + text + val.slice(end);
+                
+                // Move cursor to end of pasted text
+                el.selectionStart = el.selectionEnd = start + text.length;
+                
+                // Trigger auto-save (simulating an input event)
+                el.dispatchEvent(new Event('input'));
+            }
+        });
+
+        // --- KEYBOARD SHORTCUTS (Bold & Red) ---
+        document.addEventListener('keydown', function(e) {
+            // Only run on text fields
+            if (e.target.tagName !== 'TEXTAREA' && e.target.type !== 'text') return;
+
+            // CTRL + B for Bold (**text**)
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+                e.preventDefault();
+                applyTag(e.target, '**', '**');
+            }
+
+            // CTRL + ; for Red Color (<r>text</r>)
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === ';') {
+                e.preventDefault();
+                applyTag(e.target, '<r>', '</r>');
+            }
+        });
+
+        // Helper function to wrap text
+        function applyTag(el, startTag, endTag) {
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            const text = el.value;
+            
+            // If text is selected, wrap it. If not, just insert tags
+            const selected = text.substring(start, end);
+            const replacement = startTag + selected + endTag;
+            
+            el.value = text.substring(0, start) + replacement + text.substring(end);
+            
+            // Move cursor to end of inserted tag (or inside if empty)
+            const newCursorPos = selected.length > 0 ? start + replacement.length : start + startTag.length;
+            el.selectionStart = el.selectionEnd = newCursorPos;
+            
+            // Trigger auto-save/update
+            el.dispatchEvent(new Event('input'));
+        }
+
+        init();
+    </script>
+</body>
+</html>
