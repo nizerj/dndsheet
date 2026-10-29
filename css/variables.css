@@ -1,0 +1,62 @@
+:root {
+    /* Traditional RPG Theme - Parchment & Ink */
+    --bg-color: #e8dcca;
+    --panel-bg: #fdfbf7;
+    --sidebar-bg: #dbcfb8;
+    --border: #5c4033;
+    --text-main: #1a1a1a;
+    --text-muted: #5a4a3a;
+
+    /* Attribute Colors */
+    --str: #8b0000;
+    --dex: #2e8b57;
+    --con: #d2691e;
+    --int: #00008b;
+    --wis: #b8860b;
+    --cha: #800080;
+
+    --accent: #8b0000;
+
+    --font-main: 'Book Antiqua', Palatino, 'Palatino Linotype', 'Palatino LT STD', Georgia, serif;
+    --font-mono: 'Courier New', Courier, monospace;
+    --font-header: 'MedievalSharp', cursive;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    margin: 0;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZThkY2NhIi8+CjxwYXRoIGQ9Ik0wIDBMNCA0Wk00IDBMMCA0WiIgc3Ryb2tlPSIjZDljMmIwIiBzdHJva2Utd2lkdGg9IjEiLz4KPC9zdmc+');
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.hidden {
+    display: none;
+}
